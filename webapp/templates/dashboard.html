@@ -130,9 +130,17 @@
       <div class="card pulse-card">
         <div class="card-corners"></div>
         <div class="card-header">
-          <span class="card-title">▣ FUTURES PULSE / KRONOS SESSION <span id="session-id">001</span></span>
+          <span class="card-title">▣ FUTURES PULSE / <span id="chart-symbol-label">EQUITY</span> · <span id="chart-tf-label">1D</span></span>
           <div class="pulse-tabs">
-            <span>1H</span><span>·</span><span>4H</span><span>·</span><span class="active">1D</span>
+            <select id="symbol-select" class="symbol-select" title="Symbole"></select>
+            <span class="tab-divider">|</span>
+            <button class="tf-tab" data-tf="1m">1m</button>
+            <button class="tf-tab" data-tf="5m">5m</button>
+            <button class="tf-tab" data-tf="15m">15m</button>
+            <button class="tf-tab" data-tf="1h">1H</button>
+            <button class="tf-tab active" data-tf="1d">1D</button>
+            <span class="tab-divider">|</span>
+            <button class="tf-tab tf-toggle" data-tf="equity">PNL</button>
             <span class="live-badge live-badge-large"><span class="live-dot"></span> LIVE</span>
           </div>
         </div>

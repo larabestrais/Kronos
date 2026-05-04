@@ -547,13 +547,61 @@ body {
 
 .pulse-tabs {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
   font-size: 10px;
   color: var(--text-secondary);
 }
 
 .pulse-tabs .active { color: var(--neon); text-shadow: 0 0 6px var(--neon-glow); }
+
+.tab-divider {
+  color: var(--text-dim);
+  margin: 0 2px;
+}
+
+.tf-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 3px 7px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 1px;
+}
+
+.tf-tab:hover {
+  color: var(--neon);
+  border-color: rgba(255, 90, 60, 0.3);
+}
+
+.tf-tab.active {
+  color: var(--neon);
+  border-color: var(--neon);
+  background: rgba(255, 90, 60, 0.1);
+  text-shadow: 0 0 6px var(--neon-glow);
+}
+
+.symbol-select {
+  background: var(--bg-card-elev);
+  border: 1px solid var(--border-strong);
+  color: var(--neon);
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px var(--neon-glow);
+}
+
+.symbol-select:focus {
+  outline: none;
+  border-color: var(--neon);
+}
 
 .live-badge {
   display: inline-flex;

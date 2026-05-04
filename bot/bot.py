@@ -78,7 +78,7 @@ class TradingBot:
         return start <= now <= end
 
     def run_cycle(self) -> dict:
-        cycle_results = {"signals": [], "trades": [], "errors": []}
+        cycle_results = {"signals": [], "trades": [], "errors": [], "predictions": {}, "data": {}}
 
         logger.info("--- Début du cycle de trading ---")
 
@@ -100,6 +100,8 @@ class TradingBot:
             top_k=self.config.top_k,
             sample_count=self.config.sample_count,
         )
+        cycle_results["predictions"] = predictions
+        cycle_results["data"] = data_dict
 
         for symbol in self.config.symbols:
             if symbol not in data_dict or symbol not in predictions:

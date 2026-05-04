@@ -1,11 +1,12 @@
 import sys
 import os
 import json
+import time
 import logging
 import threading
 import secrets
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import deque
 from functools import wraps
 
@@ -31,6 +32,11 @@ if ENV_FILE.exists():
 DASHBOARD_USER = os.environ.get("DASHBOARD_USER", "kronos")
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "")
 AUTH_ENABLED = bool(DASHBOARD_PASSWORD)
+
+# Auto-scheduler config
+AUTO_CYCLE_ENABLED = os.environ.get("AUTO_CYCLE_ENABLED", "true").lower() == "true"
+AUTO_CYCLE_INTERVAL_SECONDS = int(os.environ.get("AUTO_CYCLE_INTERVAL_SECONDS", "3600"))
+RESPECT_TRADING_HOURS = os.environ.get("RESPECT_TRADING_HOURS", "true").lower() == "true"
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
@@ -62,6 +68,9 @@ _news_feed: deque = deque(maxlen=20)
 _last_predictions: dict = {}
 _last_signals: dict = {}
 _cycle_running = False
+_last_cycle_time: datetime | None = None
+_next_cycle_time: datetime | None = None
+_scheduler_thread: threading.Thread | None = None
 
 
 def get_bot() -> TradingBot:
@@ -86,7 +95,7 @@ def push_news(category: str, message: str):
 
 
 def run_cycle_async():
-    global _cycle_running
+    global _cycle_running, _last_cycle_time
     if _cycle_running:
         return
     _cycle_running = True
@@ -99,28 +108,95 @@ def run_cycle_async():
             _last_signals[sig.symbol] = {
                 "symbol": sig.symbol,
                 "action": sig.action.value,
-                "confidence": sig.confidence,
-                "predicted_return": sig.predicted_return,
-                "predicted_close": sig.predicted_close,
-                "current_close": sig.current_close,
-                "stop_loss": sig.stop_loss,
-                "take_profit": sig.take_profit,
+                "confidence": float(sig.confidence),
+                "predicted_return": float(sig.predicted_return),
+                "predicted_close": float(sig.predicted_close),
+                "current_close": float(sig.current_close),
+                "stop_loss": float(sig.stop_loss),
+                "take_profit": float(sig.take_profit),
                 "reason": sig.reason,
             }
             if sig.action != Action.HOLD:
                 push_news(sig.action.value, f"{sig.symbol} {sig.action.value} @ {sig.current_close:.2f}$ — {sig.predicted_return:+.2%}")
 
-        for sym, df in (bot.data_fetcher._cache or {}).items():
+        predictions_dict = results.get("predictions", {})
+        data_dict = results.get("data", {}) or (bot.data_fetcher._cache or {})
+
+        for sym, df in data_dict.items():
+            history_records = []
+            for ts, row in df.tail(120).iterrows():
+                history_records.append({
+                    "timestamp": ts.isoformat() if hasattr(ts, "isoformat") else str(ts),
+                    "open": float(row["open"]),
+                    "high": float(row["high"]),
+                    "low": float(row["low"]),
+                    "close": float(row["close"]),
+                    "volume": float(row.get("volume", 0)),
+                })
+
+            prediction_records = []
+            pred_df = predictions_dict.get(sym)
+            if pred_df is not None:
+                for ts, row in pred_df.iterrows():
+                    prediction_records.append({
+                        "timestamp": ts.isoformat() if hasattr(ts, "isoformat") else str(ts),
+                        "open": float(row["open"]),
+                        "high": float(row["high"]),
+                        "low": float(row["low"]),
+                        "close": float(row["close"]),
+                        "volume": float(row.get("volume", 0)),
+                    })
+
             _last_predictions[sym] = {
-                "history": df.tail(60).reset_index().to_dict(orient="records"),
+                "history": history_records,
+                "prediction": prediction_records,
             }
 
         push_news("RESOLVE", f"Cycle terminé — Portfolio: {bot.portfolio.total_value:.2f}$")
+        _last_cycle_time = datetime.now()
     except Exception as e:
         logger.error(f"Erreur cycle: {e}", exc_info=True)
         push_news("ERROR", f"Erreur: {str(e)[:80]}")
     finally:
         _cycle_running = False
+
+
+def auto_scheduler_loop():
+    """Boucle qui lance des cycles automatiquement pendant les heures de marché."""
+    global _next_cycle_time
+    logger.info(f"[AutoScheduler] Démarrage — interval: {AUTO_CYCLE_INTERVAL_SECONDS}s, respect heures: {RESPECT_TRADING_HOURS}")
+    time.sleep(20)  # let app finish booting
+
+    while True:
+        try:
+            bot = get_bot()
+            in_hours = bot.is_trading_hours() if RESPECT_TRADING_HOURS else True
+
+            if not in_hours:
+                _next_cycle_time = None
+                logger.debug("[AutoScheduler] Hors heures de marché")
+                time.sleep(300)
+                continue
+
+            if _cycle_running:
+                logger.debug("[AutoScheduler] Cycle déjà en cours, attente")
+                time.sleep(30)
+                continue
+
+            push_news("SCAN", "Cycle automatique déclenché")
+            run_cycle_async()
+
+            wait_start = time.time()
+            while _cycle_running and (time.time() - wait_start < 600):
+                time.sleep(5)
+
+            _next_cycle_time = datetime.now() + timedelta(seconds=AUTO_CYCLE_INTERVAL_SECONDS)
+            logger.info(f"[AutoScheduler] Prochain cycle à {_next_cycle_time.strftime('%H:%M:%S')}")
+            time.sleep(AUTO_CYCLE_INTERVAL_SECONDS)
+
+        except Exception as e:
+            logger.error(f"[AutoScheduler] Erreur: {e}", exc_info=True)
+            time.sleep(120)
 
 
 @app.route("/")
@@ -189,6 +265,13 @@ def api_state():
         },
         "cycle_running": _cycle_running,
         "is_trading_hours": bot.is_trading_hours(),
+        "auto_cycle": {
+            "enabled": AUTO_CYCLE_ENABLED,
+            "interval_seconds": AUTO_CYCLE_INTERVAL_SECONDS,
+            "respect_trading_hours": RESPECT_TRADING_HOURS,
+            "last_cycle": _last_cycle_time.isoformat() if _last_cycle_time else None,
+            "next_cycle": _next_cycle_time.isoformat() if _next_cycle_time else None,
+        },
         "timestamp": datetime.now().isoformat(),
     })
 
@@ -209,6 +292,63 @@ def api_predictions(symbol: str):
     if symbol not in _last_predictions:
         return jsonify({"error": "no_data"}), 404
     return jsonify(_last_predictions[symbol])
+
+
+_chart_cache: dict = {}
+_chart_cache_lock = threading.Lock()
+
+
+@app.route("/api/chart-data")
+@require_auth
+def api_chart_data():
+    """Retourne les bougies OHLCV pour un symbole/timeframe donné, avec cache 60s."""
+    symbol = request.args.get("symbol", "AAPL").upper()
+    timeframe = request.args.get("timeframe", "1d")
+    bars = int(request.args.get("bars", "120"))
+
+    cache_key = f"{symbol}:{timeframe}:{bars}"
+    now_ts = time.time()
+
+    with _chart_cache_lock:
+        cached = _chart_cache.get(cache_key)
+        if cached and (now_ts - cached["fetched_at"]) < 60:
+            return jsonify(cached["payload"])
+
+    try:
+        from bot.data_fetcher import DataFetcher
+        fetcher = DataFetcher(timeframe=timeframe)
+        df = fetcher.fetch(symbol, lookback=bars)
+
+        candles = []
+        for ts, row in df.iterrows():
+            candles.append({
+                "timestamp": ts.isoformat() if hasattr(ts, "isoformat") else str(ts),
+                "open": float(row["open"]),
+                "high": float(row["high"]),
+                "low": float(row["low"]),
+                "close": float(row["close"]),
+                "volume": float(row.get("volume", 0)),
+            })
+
+        prediction = []
+        if symbol in _last_predictions:
+            prediction = _last_predictions[symbol].get("prediction") or []
+
+        payload = {
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "candles": candles,
+            "prediction": prediction,
+            "fetched_at": now_ts,
+        }
+
+        with _chart_cache_lock:
+            _chart_cache[cache_key] = {"fetched_at": now_ts, "payload": payload}
+
+        return jsonify(payload)
+    except Exception as e:
+        logger.error(f"[chart-data] {symbol}/{timeframe}: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/reset", methods=["POST"])
@@ -232,4 +372,13 @@ def create_app():
         logger.info(f"[Auth] Authentification activée pour user: {DASHBOARD_USER}")
     else:
         logger.warning("[Auth] AUCUNE AUTHENTIFICATION — définir DASHBOARD_PASSWORD dans .env pour sécuriser")
+
+    if AUTO_CYCLE_ENABLED:
+        global _scheduler_thread
+        if _scheduler_thread is None or not _scheduler_thread.is_alive():
+            _scheduler_thread = threading.Thread(target=auto_scheduler_loop, daemon=True, name="auto-scheduler")
+            _scheduler_thread.start()
+            push_news("SYSTEM", f"Auto-scheduler ON — cycle toutes les {AUTO_CYCLE_INTERVAL_SECONDS // 60} min")
+            logger.info(f"[AutoScheduler] Thread démarré")
+
     return app
