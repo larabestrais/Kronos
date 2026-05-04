@@ -3,11 +3,13 @@ import os
 import json
 import logging
 import threading
+import secrets
 from pathlib import Path
 from datetime import datetime
 from collections import deque
+from functools import wraps
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, Response
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -17,7 +19,42 @@ from bot.signals import Action
 
 logger = logging.getLogger(__name__)
 
+# Charge les credentials depuis .env si présent
+ENV_FILE = Path(__file__).parent.parent / ".env"
+if ENV_FILE.exists():
+    for line in ENV_FILE.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+DASHBOARD_USER = os.environ.get("DASHBOARD_USER", "kronos")
+DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "")
+AUTH_ENABLED = bool(DASHBOARD_PASSWORD)
+
 app = Flask(__name__, static_folder="static", template_folder="templates")
+
+
+def check_auth(username: str, password: str) -> bool:
+    if not AUTH_ENABLED:
+        return True
+    return secrets.compare_digest(username, DASHBOARD_USER) and secrets.compare_digest(password, DASHBOARD_PASSWORD)
+
+
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not AUTH_ENABLED:
+            return f(*args, **kwargs)
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return Response(
+                "Authentification requise",
+                401,
+                {"WWW-Authenticate": 'Basic realm="Kronos Signal Grid"'},
+            )
+        return f(*args, **kwargs)
+    return decorated
 
 _bot: TradingBot | None = None
 _bot_lock = threading.Lock()
@@ -87,11 +124,13 @@ def run_cycle_async():
 
 
 @app.route("/")
+@require_auth
 def index():
     return render_template("dashboard.html")
 
 
 @app.route("/api/state")
+@require_auth
 def api_state():
     bot = get_bot()
     p = bot.portfolio
@@ -155,6 +194,7 @@ def api_state():
 
 
 @app.route("/api/cycle", methods=["POST"])
+@require_auth
 def api_run_cycle():
     if _cycle_running:
         return jsonify({"status": "already_running"}), 409
@@ -164,6 +204,7 @@ def api_run_cycle():
 
 
 @app.route("/api/predictions/<symbol>")
+@require_auth
 def api_predictions(symbol: str):
     if symbol not in _last_predictions:
         return jsonify({"error": "no_data"}), 404
@@ -171,6 +212,7 @@ def api_predictions(symbol: str):
 
 
 @app.route("/api/reset", methods=["POST"])
+@require_auth
 def api_reset():
     global _bot, _last_signals, _last_predictions, _news_feed
     state_file = Path("portfolio_state.json")
@@ -186,4 +228,8 @@ def api_reset():
 
 def create_app():
     push_news("SYSTEM", "Dashboard Kronos initialisé")
+    if AUTH_ENABLED:
+        logger.info(f"[Auth] Authentification activée pour user: {DASHBOARD_USER}")
+    else:
+        logger.warning("[Auth] AUCUNE AUTHENTIFICATION — définir DASHBOARD_PASSWORD dans .env pour sécuriser")
     return app

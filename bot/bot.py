@@ -1,3 +1,4 @@
+import os
 import time
 import logging
 import signal as sig
@@ -49,9 +50,10 @@ class TradingBot:
             max_position_pct=config.max_position_pct,
         )
 
+        portfolio_path = os.environ.get("PORTFOLIO_STATE_PATH", "portfolio_state.json")
         self.portfolio = Portfolio(
             initial_capital=config.initial_capital,
-            save_path="portfolio_state.json",
+            save_path=portfolio_path,
         )
         self.portfolio.load()
 

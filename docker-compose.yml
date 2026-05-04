@@ -1,0 +1,33 @@
+services:
+  kronos-bot:
+    build: .
+    image: kronos-trading-bot:latest
+    container_name: kronos-bot
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    environment:
+      - DASHBOARD_USER=${DASHBOARD_USER:-kronos}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD}
+      - PORTFOLIO_STATE_PATH=/app/data/portfolio_state.json
+      - TZ=${TZ:-Europe/Brussels}
+    volumes:
+      # État persistant du portfolio (survit aux redémarrages)
+      - kronos-data:/app/data
+      # Cache des modèles Kronos téléchargés depuis HuggingFace (évite de retélécharger)
+      - kronos-models:/app/.cache/huggingface
+    # Limites raisonnables pour un NAS 4 Go
+    mem_limit: 3g
+    mem_reservation: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u $${DASHBOARD_USER}:$${DASHBOARD_PASSWORD} http://localhost:5050/api/state || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  kronos-data:
+    name: kronos-data
+  kronos-models:
+    name: kronos-models

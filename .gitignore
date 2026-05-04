@@ -79,3 +79,5 @@ tmp/
 portfolio_state.json
 .claude/
 backtest_results/
+.env
+venv/
