@@ -684,18 +684,41 @@ body {
 .chart-wrapper {
   flex: 1;
   min-height: 280px;
+  max-height: 50vh;
   position: relative;
   margin: 8px 0;
+  /* Empêche le canvas de pousser la largeur du parent */
+  min-width: 0;
+  overflow: hidden;
 }
 
-#equity-chart { width: 100% !important; height: 100% !important; }
+#equity-chart {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  min-width: 0;
+}
 
 .volume-wrapper {
   height: 70px;
   position: relative;
+  min-width: 0;
+  overflow: hidden;
 }
 
-#volume-chart { width: 100% !important; height: 100% !important; }
+#volume-chart {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Empêche les colonnes flex/grid de gonfler à cause du canvas intrinsic size */
+.col, .col-center, .col-left, .col-right, .pulse-card, .main-row > * {
+  min-width: 0;
+}
 
 .pulse-bottom {
   margin-top: 10px;
