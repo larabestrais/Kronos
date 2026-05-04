@@ -366,9 +366,11 @@ def api_chart_data():
 @require_auth
 def api_reset():
     global _bot, _last_signals, _last_predictions, _news_feed
-    state_file = Path("portfolio_state.json")
+    state_path = os.environ.get("PORTFOLIO_STATE_PATH", "portfolio_state.json")
+    state_file = Path(state_path)
     if state_file.exists():
         state_file.unlink()
+        logger.info(f"[Reset] Fichier supprimé: {state_path}")
     _bot = None
     _last_signals = {}
     _last_predictions = {}

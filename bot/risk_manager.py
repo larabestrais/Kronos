@@ -74,4 +74,6 @@ class RiskManager:
             max_from_cash = cash / signal.current_close
             shares = min(shares, max_from_cash)
 
-        return max(0, int(shares))
+        # Paper trading: autoriser les fractions de parts (utile pour petits budgets)
+        # Round à 4 décimales pour éviter les flottants moches
+        return max(0.0, round(shares, 4))
