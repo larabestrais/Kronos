@@ -76,12 +76,23 @@ _scheduler_thread: threading.Thread | None = None
 def get_bot() -> TradingBot:
     global _bot
     if _bot is None:
+        symbols_env = os.environ.get("KRONOS_SYMBOLS", "AAPL,MSFT,GOOGL,NVDA,TSLA")
+        symbols = [s.strip().upper() for s in symbols_env.split(",") if s.strip()]
+
         config = BotConfig(
-            symbols=["AAPL", "MSFT", "GOOGL", "NVDA", "TSLA"],
-            initial_capital=10000.0,
-            timeframe="1d",
-            pred_len=10,
+            symbols=symbols,
+            initial_capital=float(os.environ.get("KRONOS_CAPITAL", "10000")),
+            timeframe=os.environ.get("KRONOS_TIMEFRAME", "1d"),
+            pred_len=int(os.environ.get("KRONOS_PRED_LEN", "10")),
+            model_name=os.environ.get("KRONOS_MODEL", "NeoQuasar/Kronos-small"),
+            tokenizer_name=os.environ.get("KRONOS_TOKENIZER", "NeoQuasar/Kronos-Tokenizer-base"),
+            sample_count=int(os.environ.get("KRONOS_SAMPLE_COUNT", "5")),
+            temperature=float(os.environ.get("KRONOS_TEMPERATURE", "1.0")),
+            top_p=float(os.environ.get("KRONOS_TOP_P", "0.9")),
         )
+
+        logger.info(f"[Bot] Modèle: {config.model_name} | Tokenizer: {config.tokenizer_name}")
+        logger.info(f"[Bot] Symboles: {config.symbols} | Sample count: {config.sample_count}")
         _bot = TradingBot(config)
     return _bot
 
