@@ -36,16 +36,16 @@ function formatMoney(v, signed = true) {
   if (v === null || v === undefined) return '—';
   const abs = Math.abs(v);
   let str;
-  if (abs >= 1000) str = abs.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  else str = abs.toFixed(2);
+  if (abs >= 1000) str = abs.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+  else str = abs.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const sign = v >= 0 ? '+' : '-';
-  return `${signed ? sign : ''}$${str}`;
+  return `${signed ? sign : ''}${str} $`;
 }
 
 function formatPct(v, decimals = 1) {
   if (v === null || v === undefined) return '—';
   const sign = v >= 0 ? '+' : '';
-  return `${sign}${v.toFixed(decimals)}%`;
+  return `${sign}${v.toFixed(decimals).replace('.', ',')}%`;
 }
 
 function flashUpdate(el) {
@@ -86,7 +86,7 @@ async function fetchState() {
 async function runCycle() {
   const btn = document.getElementById('run-cycle-btn');
   btn.disabled = true;
-  btn.textContent = '▶ RUNNING...';
+  btn.textContent = '▶ EN COURS...';
   cycleStartTime = Date.now();
   try {
     const res = await fetch(API.cycle, { method: 'POST' });
@@ -124,7 +124,7 @@ function renderTopStats(s) {
   pnlEl.style.color = newPnl >= 0 ? NEON : RED;
 
   document.getElementById('stat-win').textContent = `${s.win_rate}%`;
-  document.getElementById('stat-win-sub').textContent = `${summary.trades_total} TRD`;
+  document.getElementById('stat-win-sub').textContent = `${summary.trades_total} TRADES`;
 
   const positions = s.positions || [];
   let avgHold = 0;
@@ -169,6 +169,18 @@ function renderSignalRadar(s) {
   }).join('');
 }
 
+const NEWS_CATEGORY_FR = {
+  SCAN: 'SCAN',
+  BUY: 'ACHAT',
+  SELL: 'VENTE',
+  HOLD: 'PASSE',
+  RESOLVE: 'OK',
+  ERROR: 'ERREUR',
+  SYSTEM: 'SYS',
+  BREAK: 'ALERTE',
+  ARENA: 'ARENA',
+};
+
 function renderNews(s) {
   const list = document.getElementById('news-list');
   const news = s.news || [];
@@ -180,9 +192,10 @@ function renderNews(s) {
 
   list.innerHTML = news.slice(0, 12).map(n => {
     const tagClass = n.category.toLowerCase();
+    const tagText = NEWS_CATEGORY_FR[n.category] || n.category;
     return `
       <div class="news-item">
-        <span class="news-tag ${tagClass}">${n.category}</span>
+        <span class="news-tag ${tagClass}">${tagText}</span>
         <span class="news-text">${n.message}</span>
         <span class="news-time">${n.timestamp}</span>
       </div>
@@ -318,7 +331,7 @@ function populateSymbolSelect(symbols) {
 
 function renderFlow(s) {
   document.getElementById('flow-percent').textContent = `${Math.round(s.long_pct)}%`;
-  document.getElementById('flow-direction').textContent = s.long_pct >= 50 ? 'LONG' : 'SHORT';
+  document.getElementById('flow-direction').textContent = s.long_pct >= 50 ? 'LONG' : 'COURT';
   document.getElementById('flow-pnl').textContent = formatMoney(s.summary.pnl_total);
 }
 
@@ -407,7 +420,7 @@ function renderSymbolYield(s) {
         </div>
         <div class="sector-meta">
           <span class="sector-value">${formatMoney(v.pnl)}</span>
-          <span class="sector-trades">${v.count} TRD</span>
+          <span class="sector-trades">${v.count} TRADES</span>
         </div>
       </div>
     `;
@@ -747,7 +760,7 @@ async function refresh() {
   } else if (!state.cycle_running && cycleStartTime !== null) {
     const btn = document.getElementById('run-cycle-btn');
     btn.disabled = false;
-    btn.textContent = '▶ RUN CYCLE';
+    btn.textContent = '▶ LANCER CYCLE';
   }
 
   renderTopStats(state);

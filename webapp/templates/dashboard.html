@@ -2,8 +2,11 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KRONOS SIGNAL // GRID</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#06070b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>KRONOS SIGNAL // GRILLE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -24,43 +27,43 @@
         <div class="brand-logo">◆</div>
         <div class="brand-text">
           <div class="brand-name">KRONOS SIGNAL</div>
-          <div class="brand-subtitle">// GRID <span class="version">v1.0</span></div>
+          <div class="brand-subtitle">// GRILLE <span class="version">v1.0</span></div>
         </div>
       </div>
       <div class="brand-meta">
-        <span>NODE 04</span>
+        <span>NŒUD 04</span>
         <span class="dot">·</span>
         <span>SEC <span id="sec-counter">000</span></span>
         <span class="dot">·</span>
-        <span class="status-online"><span class="pulse-dot"></span> ONLINE</span>
+        <span class="status-online"><span class="pulse-dot"></span> EN LIGNE</span>
       </div>
     </div>
 
     <div class="card stat-card">
       <div class="card-corners"></div>
-      <div class="stat-label">PNL</div>
-      <div class="stat-value" id="stat-pnl">+$0</div>
+      <div class="stat-label">P&amp;L</div>
+      <div class="stat-value" id="stat-pnl">+0,00 $</div>
     </div>
 
     <div class="card stat-card">
       <div class="card-corners"></div>
-      <div class="stat-label">WIN</div>
+      <div class="stat-label">RÉUSSITE</div>
       <div class="stat-value" id="stat-win">0%</div>
-      <div class="stat-sub" id="stat-win-sub">0 TRD</div>
+      <div class="stat-sub" id="stat-win-sub">0 TRADES</div>
     </div>
 
     <div class="card stat-card">
       <div class="card-corners"></div>
-      <div class="stat-label">HOLD</div>
+      <div class="stat-label">DURÉE</div>
       <div class="stat-value" id="stat-hold">0H</div>
-      <div class="stat-sub">AVG</div>
+      <div class="stat-sub">MOYENNE</div>
     </div>
 
     <div class="card stat-card">
       <div class="card-corners"></div>
-      <div class="stat-label">POS</div>
+      <div class="stat-label">POS.</div>
       <div class="stat-value" id="stat-pos">0</div>
-      <div class="stat-sub">OPEN</div>
+      <div class="stat-sub">OUVERTES</div>
     </div>
 
     <div class="card stat-card">
@@ -79,7 +82,7 @@
       <div class="card signal-radar">
         <div class="card-corners"></div>
         <div class="card-header">
-          <span class="card-title">▣ SIGNAL RADAR</span>
+          <span class="card-title">▣ RADAR SIGNAUX</span>
           <span class="live-badge"><span class="live-dot"></span> LIVE</span>
         </div>
         <div class="signal-list" id="signal-list">
@@ -90,7 +93,7 @@
       <div class="card news-ribbon">
         <div class="card-corners"></div>
         <div class="card-header">
-          <span class="card-title">▣ NEWS RIBBON</span>
+          <span class="card-title">▣ FIL D'ACTIVITÉ</span>
           <span class="live-badge"><span class="live-dot"></span> LIVE</span>
         </div>
         <div class="news-list" id="news-list">
@@ -101,22 +104,22 @@
       <div class="card desk-metrics">
         <div class="card-corners"></div>
         <div class="card-header">
-          <span class="card-title">▣ DESK METRICS</span>
+          <span class="card-title">▣ MÉTRIQUES</span>
         </div>
         <div class="metric-block">
           <div class="metric-row">
-            <span class="metric-label">FLOW TIMER</span>
+            <span class="metric-label">PROCHAIN CYCLE</span>
             <span class="live-badge"><span class="live-dot"></span> LIVE</span>
           </div>
           <div class="flow-timer" id="flow-timer">00:00:00</div>
         </div>
         <div class="metric-grid">
           <div>
-            <div class="metric-label">CAP DEPLOYED</div>
-            <div class="metric-value" id="cap-deployed">$0</div>
+            <div class="metric-label">CAPITAL ENGAGÉ</div>
+            <div class="metric-value" id="cap-deployed">0 $</div>
           </div>
           <div>
-            <div class="metric-label">CAP VELOCITY</div>
+            <div class="metric-label">VITESSE</div>
             <div class="metric-value" id="cap-velocity">0x</div>
           </div>
         </div>
@@ -130,7 +133,7 @@
       <div class="card pulse-card">
         <div class="card-corners"></div>
         <div class="card-header">
-          <span class="card-title">▣ FUTURES PULSE / <span id="chart-symbol-label">EQUITY</span> · <span id="chart-tf-label">1D</span></span>
+          <span class="card-title">▣ PULSE / <span id="chart-symbol-label">EQUITY</span> · <span id="chart-tf-label">1J</span></span>
           <div class="pulse-tabs">
             <select id="symbol-select" class="symbol-select" title="Symbole"></select>
             <span class="tab-divider">|</span>
@@ -138,22 +141,22 @@
             <button class="tf-tab" data-tf="5m">5m</button>
             <button class="tf-tab" data-tf="15m">15m</button>
             <button class="tf-tab" data-tf="1h">1H</button>
-            <button class="tf-tab active" data-tf="1d">1D</button>
+            <button class="tf-tab active" data-tf="1d">1J</button>
             <span class="tab-divider">|</span>
-            <button class="tf-tab tf-toggle" data-tf="equity">PNL</button>
+            <button class="tf-tab tf-toggle" data-tf="equity">P&amp;L</button>
             <span class="live-badge live-badge-large"><span class="live-dot"></span> LIVE</span>
           </div>
         </div>
 
         <div class="pulse-main">
           <div class="pulse-pnl-block">
-            <div class="pulse-pnl" id="pulse-pnl">+$0</div>
+            <div class="pulse-pnl" id="pulse-pnl">+0,00 $</div>
             <div class="pulse-meta">
-              <span class="meta-positive" id="pulse-pct">▲ +0.0% MTD</span>
+              <span class="meta-positive" id="pulse-pct">▲ +0,0% TOTAL</span>
               <span class="sharpe">SHARPE <span id="sharpe">0.00</span></span>
             </div>
             <div class="pulse-pills">
-              <span class="pill pill-orange">★ RISK ON</span>
+              <span class="pill pill-orange">★ RISQUE ACTIF</span>
               <span class="pill pill-pink">★ KRONOS LIVE</span>
             </div>
           </div>
@@ -170,25 +173,25 @@
         <div class="pulse-bottom">
           <div class="pulse-bottom-bar">
             <span class="bottom-percent" id="bid-flow-pct">73%</span>
-            <span class="bottom-label">AGGRESSIVE BID FLOW</span>
+            <span class="bottom-label">FLUX ACHETEUR</span>
             <div class="bottom-progress">
               <div class="bottom-progress-fill" id="bid-flow-bar" style="width: 73%"></div>
             </div>
-            <span class="bottom-label-right">ROLLING 5M</span>
+            <span class="bottom-label-right">5 MIN GLISSANT</span>
           </div>
         </div>
 
         <div class="pulse-stats">
           <div class="pulse-stat">
-            <div class="pulse-stat-label">NOTIONAL 200M</div>
+            <div class="pulse-stat-label">NOTIONNEL</div>
             <div class="pulse-stat-value" id="notional">+0</div>
           </div>
           <div class="pulse-stat">
-            <div class="pulse-stat-label">MATCH SPEED</div>
+            <div class="pulse-stat-label">VITESSE EXÉC</div>
             <div class="pulse-stat-value" id="match-speed">42<span class="unit">ms</span></div>
           </div>
           <div class="pulse-stat">
-            <div class="pulse-stat-label">IMPACT BPS</div>
+            <div class="pulse-stat-label">IMPACT (PB)</div>
             <div class="pulse-stat-value" id="impact-bps">0.00</div>
           </div>
         </div>
@@ -202,13 +205,13 @@
       <div class="card flow-card">
         <div class="card-corners"></div>
         <div class="card-header">
-          <span class="card-title">▣ FLOW</span>
+          <span class="card-title">▣ FLUX</span>
         </div>
         <div class="flow-percent" id="flow-percent">0%</div>
         <div class="flow-direction" id="flow-direction">LONG</div>
         <div class="flow-pnl">
-          <span class="metric-label">PNL</span>
-          <span class="flow-pnl-value" id="flow-pnl">+$0</span>
+          <span class="metric-label">P&amp;L</span>
+          <span class="flow-pnl-value" id="flow-pnl">+0,00 $</span>
         </div>
       </div>
 
@@ -216,7 +219,7 @@
         <div class="card-corners"></div>
         <div class="card-header">
           <span class="card-title">▣ POSITIONS</span>
-          <span class="badge-count"><span id="positions-count">0</span> OPEN</span>
+          <span class="badge-count"><span id="positions-count">0</span> OUVERTES</span>
         </div>
         <div class="whale-list" id="positions-list">
           <div class="empty-state">AUCUNE POSITION</div>
@@ -226,19 +229,19 @@
       <div class="card strategy-card">
         <div class="card-corners"></div>
         <div class="card-header">
-          <span class="card-title">▣ CONFIDENCE MIX</span>
+          <span class="card-title">▣ CONFIANCE</span>
         </div>
         <div class="strategy-bars">
-          <div class="strat-row"><span>LOW</span><div class="bar"><div class="bar-fill" id="conf-low" style="width: 0%"></div></div></div>
-          <div class="strat-row"><span>MED</span><div class="bar"><div class="bar-fill" id="conf-med" style="width: 0%"></div></div></div>
-          <div class="strat-row"><span>HIGH</span><div class="bar"><div class="bar-fill" id="conf-high" style="width: 0%"></div></div></div>
+          <div class="strat-row"><span>FAIBLE</span><div class="bar"><div class="bar-fill" id="conf-low" style="width: 0%"></div></div></div>
+          <div class="strat-row"><span>MOYEN</span><div class="bar"><div class="bar-fill" id="conf-med" style="width: 0%"></div></div></div>
+          <div class="strat-row"><span>HAUTE</span><div class="bar"><div class="bar-fill" id="conf-high" style="width: 0%"></div></div></div>
         </div>
       </div>
 
       <div class="card sector-card">
         <div class="card-corners"></div>
         <div class="card-header">
-          <span class="card-title">▣ SYMBOL YIELD</span>
+          <span class="card-title">▣ RENDEMENT</span>
           <span class="badge-count" id="sector-count">0 SYM</span>
         </div>
         <div class="sector-list" id="sector-list">
@@ -251,19 +254,19 @@
 
   <!-- BOTTOM BAR -->
   <div class="bottom-bar">
-    <button class="action-btn" id="run-cycle-btn">▶ RUN CYCLE</button>
-    <button class="action-btn action-btn-secondary" id="reset-btn">⟲ RESET</button>
+    <button class="action-btn" id="run-cycle-btn">▶ LANCER CYCLE</button>
+    <button class="action-btn action-btn-secondary" id="reset-btn">⟲ RÉINITIALISER</button>
     <div class="bottom-info">
-      <span class="info-label">MODEL</span>
+      <span class="info-label">MODÈLE</span>
       <span class="info-value" id="info-model">Kronos-small</span>
       <span class="dot">·</span>
-      <span class="info-label">PRED LEN</span>
+      <span class="info-label">LONG. PRÉD</span>
       <span class="info-value" id="info-pred-len">10</span>
       <span class="dot">·</span>
-      <span class="info-label">SYMBOLS</span>
+      <span class="info-label">SYMBOLES</span>
       <span class="info-value" id="info-symbols">0</span>
     </div>
-    <div class="bottom-disclaimer">⚠ SIMULATED DASHBOARD — NOT REAL TRADING RESULTS</div>
+    <div class="bottom-disclaimer">⚠ TRADING SIMULÉ — RÉSULTATS NON RÉELS</div>
   </div>
 
 </div>
