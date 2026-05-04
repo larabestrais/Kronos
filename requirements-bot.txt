@@ -1,0 +1,4 @@
+-r requirements.txt
+yfinance>=0.2.30
+pytz
+flask>=3.0.0
