@@ -25,6 +25,7 @@ class BotConfig:
     max_position_pct: float = 0.20
     stop_loss_pct: float = 0.03
     take_profit_pct: float = 0.06
+    leverage: float = 1.0  # 1 = pas de levier, 5 = typique CFD US retail EU
 
     # --- Signals ---
     buy_threshold: float = 0.01

@@ -49,9 +49,10 @@ class Trade:
 
 class Portfolio:
 
-    def __init__(self, initial_capital: float = 10000.0, save_path: str = "portfolio_state.json"):
+    def __init__(self, initial_capital: float = 10000.0, save_path: str = "portfolio_state.json", leverage: float = 1.0):
         self.initial_capital = initial_capital
         self.cash = initial_capital
+        self.leverage = max(1.0, leverage)
         self.positions: dict[str, Position] = {}
         self.trades: list[Trade] = []
         self.daily_pnl = 0.0
@@ -60,12 +61,22 @@ class Portfolio:
         self._equity_curve: list[dict] = []
 
     @property
+    def margin_used(self) -> float:
+        """Marge réservée par toutes les positions ouvertes (positions / leverage)."""
+        return sum(p.shares * p.entry_price / self.leverage for p in self.positions.values())
+
+    @property
+    def unrealized_pnl(self) -> float:
+        return sum(p.unrealized_pnl for p in self.positions.values())
+
+    @property
     def total_value(self) -> float:
-        positions_value = sum(
-            p.shares * (p.entry_price + p.unrealized_pnl / p.shares) if p.shares > 0 else 0
-            for p in self.positions.values()
-        )
-        return self.cash + positions_value
+        # Equity = cash libre + marge bloquée + PnL latent sur positions
+        return self.cash + self.margin_used + self.unrealized_pnl
+
+    @property
+    def free_margin(self) -> float:
+        return self.cash
 
     @property
     def open_position_count(self) -> int:
@@ -76,13 +87,15 @@ class Portfolio:
             logger.warning(f"[Portfolio] Position déjà ouverte pour {symbol}")
             return False
 
-        cost = shares * price
-        if side == "LONG" and cost > self.cash:
-            logger.warning(f"[Portfolio] Cash insuffisant: {self.cash:.2f}$ < {cost:.2f}$")
+        notional = shares * price
+        margin = notional / self.leverage
+
+        if margin > self.cash:
+            logger.warning(f"[Portfolio] Marge insuffisante: {self.cash:.2f}$ libre < {margin:.2f}$ requise (notionnel {notional:.2f}$, levier {self.leverage}x)")
             return False
 
-        if side == "LONG":
-            self.cash -= cost
+        # On bloque la marge dans le solde libre
+        self.cash -= margin
 
         now = pd.Timestamp.now().isoformat()
         self.positions[symbol] = Position(
@@ -95,7 +108,7 @@ class Portfolio:
             price=price, timestamp=now, reason=f"Ouverture {side}",
         ))
 
-        logger.info(f"[Portfolio] OPEN {side} {shares}x {symbol} @ {price:.2f}$")
+        logger.info(f"[Portfolio] OPEN {side} {shares}x {symbol} @ {price:.2f}$ | notionnel: {notional:.2f}$, marge: {margin:.2f}$")
         return True
 
     def close_position(self, symbol: str, price: float, reason: str = "") -> float:
@@ -106,10 +119,9 @@ class Portfolio:
         pos.update_pnl(price)
         pnl = pos.unrealized_pnl
 
-        if pos.side == "LONG":
-            self.cash += pos.shares * price
-        else:
-            self.cash += pnl
+        # Libère la marge + ajoute le PnL réalisé
+        margin = (pos.shares * pos.entry_price) / self.leverage
+        self.cash += margin + pnl
 
         now = pd.Timestamp.now().isoformat()
         self.trades.append(Trade(
@@ -151,10 +163,15 @@ class Portfolio:
 
     def get_summary(self) -> dict:
         total = self.total_value
+        notional = sum(p.shares * p.entry_price for p in self.positions.values())
         return {
             "capital_initial": self.initial_capital,
             "valeur_totale": round(total, 2),
             "cash": round(self.cash, 2),
+            "marge_utilisee": round(self.margin_used, 2),
+            "marge_libre": round(self.free_margin, 2),
+            "notionnel_positions": round(notional, 2),
+            "leverage": self.leverage,
             "pnl_total": round(total - self.initial_capital, 2),
             "pnl_total_pct": round((total - self.initial_capital) / self.initial_capital * 100, 2),
             "pnl_journalier": round(self.daily_pnl, 2),
@@ -173,6 +190,7 @@ class Portfolio:
         state = {
             "cash": self.cash,
             "initial_capital": self.initial_capital,
+            "leverage": self.leverage,
             "peak_value": self.peak_value,
             "daily_pnl": self.daily_pnl,
             "positions": {k: asdict(v) for k, v in self.positions.items()},
@@ -186,6 +204,7 @@ class Portfolio:
         state = json.loads(self.save_path.read_text())
         self.cash = state["cash"]
         self.initial_capital = state["initial_capital"]
+        self.leverage = state.get("leverage", self.leverage)
         self.peak_value = state["peak_value"]
         self.daily_pnl = state.get("daily_pnl", 0)
         self.positions = {k: Position(**v) for k, v in state.get("positions", {}).items()}

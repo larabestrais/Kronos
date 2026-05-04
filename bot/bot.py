@@ -48,19 +48,22 @@ class TradingBot:
             max_open_positions=config.max_open_positions,
             risk_per_trade_pct=config.risk_per_trade_pct,
             max_position_pct=config.max_position_pct,
+            leverage=config.leverage,
         )
 
         portfolio_path = os.environ.get("PORTFOLIO_STATE_PATH", "portfolio_state.json")
         self.portfolio = Portfolio(
             initial_capital=config.initial_capital,
             save_path=portfolio_path,
+            leverage=config.leverage,
         )
         self.portfolio.load()
 
         self.trader = PaperTrader(self.portfolio, self.risk_manager)
 
         logger.info(f"Symboles: {config.symbols}")
-        logger.info(f"Capital: {config.initial_capital}$ | Timeframe: {config.timeframe}")
+        logger.info(f"Capital: {config.initial_capital}$ | Timeframe: {config.timeframe} | Levier: {config.leverage}x")
+        logger.info(f"Stop-loss: {config.stop_loss_pct*100:.1f}% | Take-profit: {config.take_profit_pct*100:.1f}%")
         logger.info("=== Bot prêt ===")
 
     def is_trading_hours(self) -> bool:

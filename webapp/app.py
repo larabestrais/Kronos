@@ -89,10 +89,19 @@ def get_bot() -> TradingBot:
             sample_count=int(os.environ.get("KRONOS_SAMPLE_COUNT", "5")),
             temperature=float(os.environ.get("KRONOS_TEMPERATURE", "1.0")),
             top_p=float(os.environ.get("KRONOS_TOP_P", "0.9")),
+            leverage=float(os.environ.get("KRONOS_LEVERAGE", "1.0")),
+            stop_loss_pct=float(os.environ.get("KRONOS_STOP_LOSS_PCT", "0.03")),
+            take_profit_pct=float(os.environ.get("KRONOS_TAKE_PROFIT_PCT", "0.06")),
+            risk_per_trade_pct=float(os.environ.get("KRONOS_RISK_PER_TRADE_PCT", "0.02")),
+            max_position_pct=float(os.environ.get("KRONOS_MAX_POSITION_PCT", "0.20")),
+            max_drawdown_pct=float(os.environ.get("KRONOS_MAX_DRAWDOWN_PCT", "0.10")),
+            max_open_positions=int(os.environ.get("KRONOS_MAX_OPEN_POSITIONS", "3")),
         )
 
         logger.info(f"[Bot] Modèle: {config.model_name} | Tokenizer: {config.tokenizer_name}")
         logger.info(f"[Bot] Symboles: {config.symbols} | Sample count: {config.sample_count}")
+        logger.info(f"[Bot] Capital: {config.initial_capital}$ | Levier: {config.leverage}x")
+        logger.info(f"[Bot] SL: {config.stop_loss_pct*100:.1f}% | TP: {config.take_profit_pct*100:.1f}% | Risque/trade: {config.risk_per_trade_pct*100:.1f}%")
         _bot = TradingBot(config)
     return _bot
 
