@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from bot.config import BotConfig
 from bot.bot import TradingBot
 from bot.signals import Action
+from bot.notifier import from_env as telegram_from_env
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,7 @@ _cycle_running = False
 _last_cycle_time: datetime | None = None
 _next_cycle_time: datetime | None = None
 _scheduler_thread: threading.Thread | None = None
+_telegram = telegram_from_env()
 
 
 def get_bot() -> TradingBot:
@@ -122,7 +124,25 @@ def run_cycle_async():
     try:
         bot = get_bot()
         push_news("SCAN", f"Cycle de prédiction lancé sur {len(bot.config.symbols)} symboles")
+
+        # Snapshot état AVANT le cycle pour détecter les changements de positions
+        positions_before = {sym: pos for sym, pos in bot.portfolio.positions.items()}
+        trades_before_count = len(bot.portfolio.trades)
+
         results = bot.run_once()
+
+        # Détecter les positions nouvellement ouvertes
+        for sym, pos in bot.portfolio.positions.items():
+            if sym not in positions_before:
+                _telegram.notify_position_opened(pos, leverage=bot.portfolio.leverage)
+
+        # Détecter les positions fermées (SL/TP/manuel)
+        new_trades = bot.portfolio.trades[trades_before_count:]
+        close_trades = [t for t in new_trades if t.side.startswith("CLOSE_")]
+        for t in close_trades:
+            entry = positions_before.get(t.symbol)
+            entry_price = entry.entry_price if entry else t.price
+            _telegram.notify_position_closed(t, entry_price)
 
         for sig in results.get("signals", []):
             _last_signals[sig.symbol] = {
@@ -138,6 +158,9 @@ def run_cycle_async():
             }
             if sig.action != Action.HOLD:
                 push_news(sig.action.value, f"{sig.symbol} {sig.action.value} @ {sig.current_close:.2f}$ — {sig.predicted_return:+.2%}")
+
+        # Notification résumé du cycle (silencieux si tout HOLD)
+        _telegram.notify_cycle_summary(bot.portfolio.get_summary(), results.get("signals", []))
 
         predictions_dict = results.get("predictions", {})
         data_dict = results.get("data", {}) or (bot.data_fetcher._cache or {})
@@ -177,6 +200,7 @@ def run_cycle_async():
     except Exception as e:
         logger.error(f"Erreur cycle: {e}", exc_info=True)
         push_news("ERROR", f"Erreur: {str(e)[:80]}")
+        _telegram.notify_error(str(e), dedupe_key="cycle_error")
     finally:
         _cycle_running = False
 
@@ -292,6 +316,7 @@ def api_state():
             "last_cycle": _last_cycle_time.isoformat() if _last_cycle_time else None,
             "next_cycle": _next_cycle_time.isoformat() if _next_cycle_time else None,
         },
+        "telegram_enabled": _telegram.enabled,
         "timestamp": datetime.now().isoformat(),
     })
 
@@ -371,6 +396,21 @@ def api_chart_data():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/test-telegram", methods=["POST"])
+@require_auth
+def api_test_telegram():
+    if not _telegram.enabled:
+        return jsonify({
+            "status": "disabled",
+            "message": "Telegram pas configuré — définir TELEGRAM_BOT_TOKEN et TELEGRAM_CHAT_ID dans le compose",
+        }), 400
+    success = _telegram.test()
+    return jsonify({
+        "status": "ok" if success else "error",
+        "message": "Test envoyé" if success else "Échec de l'envoi — vérifier le token et le chat_id",
+    })
+
+
 @app.route("/api/reset", methods=["POST"])
 @require_auth
 def api_reset():
@@ -394,6 +434,14 @@ def create_app():
         logger.info(f"[Auth] Authentification activée pour user: {DASHBOARD_USER}")
     else:
         logger.warning("[Auth] AUCUNE AUTHENTIFICATION — définir DASHBOARD_PASSWORD dans .env pour sécuriser")
+
+    if _telegram.enabled:
+        push_news("SYSTEM", "Notifications Telegram activées")
+        # Message de démarrage silencieux
+        try:
+            _telegram.send("<b>🤖 KRONOS</b>\n\n<i>Bot redémarré — notifications actives.</i>", silent=True)
+        except Exception:
+            pass
 
     if AUTO_CYCLE_ENABLED:
         global _scheduler_thread
