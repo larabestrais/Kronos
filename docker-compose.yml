@@ -1,8 +1,11 @@
 services:
   kronos-bot:
+    # Image pré-construite (multi-arch ARM64 + AMD64) publiée par GitHub Actions
+    image: ghcr.io/larabestrais/kronos-trading-bot:latest
+    # Build local possible avec `docker compose build` si tu modifies le code
     build: .
-    image: kronos-trading-bot:latest
     container_name: kronos-bot
+    pull_policy: always
     restart: unless-stopped
     ports:
       - "5050:5050"
