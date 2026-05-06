@@ -27,6 +27,13 @@ class BotConfig:
     take_profit_pct: float = 0.06
     leverage: float = 1.0  # 1 = pas de levier, 5 = typique CFD US retail EU
 
+    # --- Data source ---
+    data_source: str = "yfinance"  # 'yfinance' ou 'ig'
+    ig_username: Optional[str] = None
+    ig_password: Optional[str] = None
+    ig_api_key: Optional[str] = None
+    ig_account_type: str = "DEMO"  # 'DEMO' ou 'LIVE'
+
     # --- Signals ---
     buy_threshold: float = 0.01
     sell_threshold: float = -0.01

@@ -6,3 +6,4 @@ from .risk_manager import RiskManager
 from .portfolio import Portfolio
 from .trader import PaperTrader
 from .bot import TradingBot
+from .brokers import IGBroker, IGBrokerError

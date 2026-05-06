@@ -13,6 +13,7 @@ from .signals import SignalEngine, Action
 from .risk_manager import RiskManager
 from .portfolio import Portfolio
 from .trader import PaperTrader
+from .brokers import IGBroker, IGBrokerError
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,27 @@ class TradingBot:
 
         logger.info("=== Initialisation du Trading Bot Kronos ===")
 
-        self.data_fetcher = DataFetcher(timeframe=config.timeframe)
+        # --- Broker IG (optionnel) ---
+        self.ig_broker = None
+        if config.data_source.lower() == "ig" and config.ig_username and config.ig_password and config.ig_api_key:
+            try:
+                self.ig_broker = IGBroker(
+                    username=config.ig_username,
+                    password=config.ig_password,
+                    api_key=config.ig_api_key,
+                    account_type=config.ig_account_type,
+                )
+                self.ig_broker.connect()
+                logger.info(f"[IG] Broker connecté ({config.ig_account_type})")
+            except IGBrokerError as e:
+                logger.error(f"[IG] Échec connexion: {e}. Fallback yfinance.")
+                self.ig_broker = None
+
+        self.data_fetcher = DataFetcher(
+            timeframe=config.timeframe,
+            source=config.data_source if self.ig_broker else "yfinance",
+            ig_broker=self.ig_broker,
+        )
 
         self.predictor = KronosPredictorWrapper(
             model_name=config.model_name,

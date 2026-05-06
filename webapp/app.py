@@ -98,6 +98,12 @@ def get_bot() -> TradingBot:
             max_position_pct=float(os.environ.get("KRONOS_MAX_POSITION_PCT", "0.20")),
             max_drawdown_pct=float(os.environ.get("KRONOS_MAX_DRAWDOWN_PCT", "0.10")),
             max_open_positions=int(os.environ.get("KRONOS_MAX_OPEN_POSITIONS", "3")),
+            # --- Source de données (yfinance par défaut, 'ig' pour IG Markets) ---
+            data_source=os.environ.get("KRONOS_DATA_SOURCE", "yfinance"),
+            ig_username=os.environ.get("IG_USERNAME") or None,
+            ig_password=os.environ.get("IG_PASSWORD") or None,
+            ig_api_key=os.environ.get("IG_API_KEY") or None,
+            ig_account_type=os.environ.get("IG_ACC_TYPE", "DEMO"),
         )
 
         logger.info(f"[Bot] Modèle: {config.model_name} | Tokenizer: {config.tokenizer_name}")

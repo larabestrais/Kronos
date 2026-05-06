@@ -14,6 +14,16 @@ services:
       - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD}
       - PORTFOLIO_STATE_PATH=/app/data/portfolio_state.json
       - TZ=${TZ:-Europe/Brussels}
+      # --- Source de données (yfinance ou ig) ---
+      - KRONOS_DATA_SOURCE=${KRONOS_DATA_SOURCE:-yfinance}
+      # --- IG Markets API (optionnel, requis si KRONOS_DATA_SOURCE=ig) ---
+      - IG_USERNAME=${IG_USERNAME:-}
+      - IG_PASSWORD=${IG_PASSWORD:-}
+      - IG_API_KEY=${IG_API_KEY:-}
+      - IG_ACC_TYPE=${IG_ACC_TYPE:-DEMO}
+      # --- Notifications Telegram (optionnel) ---
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
     volumes:
       # État persistant du portfolio (survit aux redémarrages)
       - kronos-data:/app/data

@@ -20,13 +20,54 @@ MAX_PERIOD_MAP = {
 
 
 class DataFetcher:
+    """
+    Récupère les bougies OHLCV pour un symbole.
 
-    def __init__(self, timeframe: str = "1h"):
+    Sources supportées :
+    - 'yfinance' (défaut) : Yahoo Finance, gratuit, latence ~15min
+    - 'ig'                : IG Markets REST API, temps réel, requiert IGBroker connecté
+
+    Si source='ig' mais que le broker IG est None ou échoue, fallback automatique
+    vers yfinance pour rester opérationnel.
+    """
+
+    def __init__(self, timeframe: str = "1h", source: str = "yfinance", ig_broker=None):
         self.timeframe = timeframe
+        self.source = source.lower()
+        self.ig_broker = ig_broker
         self.yf_interval = TIMEFRAME_MAP.get(timeframe, "1h")
         self._cache: dict[str, pd.DataFrame] = {}
 
+        if self.source == "ig" and self.ig_broker is None:
+            logger.warning(
+                "[DataFetcher] source='ig' mais broker non fourni, fallback yfinance"
+            )
+            self.source = "yfinance"
+
+        logger.info(f"[DataFetcher] source={self.source}, timeframe={timeframe}")
+
     def fetch(self, symbol: str, lookback: int = 400, end: Optional[datetime] = None) -> pd.DataFrame:
+        # Tentative IG d'abord si configuré
+        if self.source == "ig" and self.ig_broker is not None:
+            try:
+                df = self.ig_broker.fetch_historical(
+                    symbol=symbol,
+                    timeframe=self.timeframe,
+                    num_points=lookback,
+                )
+                if end is not None:
+                    df = df[df.index <= pd.Timestamp(end, tz=df.index.tz)]
+                self._cache[symbol] = df
+                return df
+            except Exception as e:
+                logger.warning(
+                    f"[DataFetcher] IG échec pour {symbol}: {e}. Fallback yfinance."
+                )
+
+        # Fallback yfinance
+        return self._fetch_yfinance(symbol, lookback, end)
+
+    def _fetch_yfinance(self, symbol: str, lookback: int, end: Optional[datetime]) -> pd.DataFrame:
         try:
             ticker = yf.Ticker(symbol)
             max_period = MAX_PERIOD_MAP.get(self.yf_interval, "730d")
@@ -54,7 +95,7 @@ class DataFetcher:
 
             df.index = pd.to_datetime(df.index)
             self._cache[symbol] = df
-            logger.info(f"[DataFetcher] {symbol}: {len(df)} bougies ({self.yf_interval})")
+            logger.info(f"[DataFetcher] {symbol}: {len(df)} bougies (yfinance, {self.yf_interval})")
             return df
 
         except Exception as e:
