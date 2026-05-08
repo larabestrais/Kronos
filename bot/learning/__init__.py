@@ -24,6 +24,7 @@ from .bounds import (
 from .storage import LearningStateStore
 from .regime import RegimeDetector
 from .tracker import PerformanceTracker
+from .engine import AdaptationEngine
 
 __all__ = [
     "Regime",
@@ -44,4 +45,5 @@ __all__ = [
     "LearningStateStore",
     "RegimeDetector",
     "PerformanceTracker",
+    "AdaptationEngine",
 ]
