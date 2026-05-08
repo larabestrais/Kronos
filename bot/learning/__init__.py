@@ -23,6 +23,7 @@ from .bounds import (
 )
 from .storage import LearningStateStore
 from .regime import RegimeDetector
+from .tracker import PerformanceTracker
 
 __all__ = [
     "Regime",
@@ -42,4 +43,5 @@ __all__ = [
     "MAX_DAILY_CHANGE_PCT",
     "LearningStateStore",
     "RegimeDetector",
+    "PerformanceTracker",
 ]
