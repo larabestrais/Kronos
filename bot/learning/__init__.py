@@ -25,6 +25,7 @@ from .storage import LearningStateStore
 from .regime import RegimeDetector
 from .tracker import PerformanceTracker
 from .engine import AdaptationEngine
+from .reporter import DailyReporter
 
 __all__ = [
     "Regime",
@@ -46,4 +47,5 @@ __all__ = [
     "RegimeDetector",
     "PerformanceTracker",
     "AdaptationEngine",
+    "DailyReporter",
 ]
