@@ -80,6 +80,45 @@ class TradingBot:
         )
         self.portfolio.load()
 
+        # --- Learning module (optionnel) ---
+        self.learning_state = None
+        self.learning_store = None
+        self.regime_detector = None
+        self.tracker = None
+
+        if config.learning_enabled:
+            try:
+                from .learning import (
+                    LearningStateStore, RegimeDetector, PerformanceTracker,
+                )
+                learning_path = os.environ.get(
+                    "LEARNING_STATE_PATH",
+                    os.path.join(os.path.dirname(portfolio_path), "learning_state.json"),
+                )
+                self.learning_store = LearningStateStore(save_path=learning_path)
+                self.learning_state = self.learning_store.load()
+                self.regime_detector = RegimeDetector()
+                self.tracker = PerformanceTracker(self.learning_state)
+
+                # Hook : tracker reçoit les trades fermés via callback
+                def _on_trade_closed(trade, entry_price, _state=self.learning_state, _tracker=self.tracker):
+                    try:
+                        _tracker.record_closed_trade(trade, regime=_state.current_regime)
+                    except Exception as e:
+                        logger.exception(f"[Learning] tracker callback failed: {e}")
+
+                self.portfolio.on_position_closed_callbacks.append(_on_trade_closed)
+
+                logger.info(f"[Learning] Module activé, state: {learning_path}")
+                if config.learning_dry_run:
+                    logger.info("[Learning] Mode DRY-RUN actif, aucun ajustement appliqué")
+            except Exception as e:
+                logger.exception(f"[Learning] Échec init, désactivé: {e}")
+                self.learning_state = None
+                self.learning_store = None
+                self.regime_detector = None
+                self.tracker = None
+
         self.trader = PaperTrader(self.portfolio, self.risk_manager)
 
         logger.info(f"Symboles: {config.symbols}")
@@ -116,6 +155,13 @@ class TradingBot:
             current_prices[symbol] = df["close"].iloc[-1]
         self.portfolio.update_positions(current_prices)
 
+        # --- Mise à jour du régime de marché si learning activé ---
+        if self.learning_state is not None and self.regime_detector is not None:
+            try:
+                self._update_regime(data_dict)
+            except Exception as e:
+                logger.exception(f"[Learning] Erreur update_regime: {e}")
+
         predictions = self.predictor.predict_multiple(
             data_dict,
             pred_len=self.config.pred_len,
@@ -148,6 +194,63 @@ class TradingBot:
         logger.info("--- Fin du cycle ---")
 
         return cycle_results
+
+    def _update_regime(self, data_dict):
+        """Calcule le régime actuel et met à jour le state."""
+        import yfinance as yf
+        import pandas as pd
+        from datetime import datetime, timezone
+
+        # 1. Récupère VIX (avec fallback)
+        try:
+            vix_ticker = yf.Ticker("^VIX")
+            vix_hist = vix_ticker.history(period="1d", interval="1h")
+            if len(vix_hist) == 0:
+                raise ValueError("VIX history empty")
+            vix = float(vix_hist["Close"].iloc[-1])
+        except Exception as e:
+            logger.warning(f"[Learning] VIX indisponible, fallback 15: {e}")
+            vix = 15.0
+
+        # 2. Calcule basket moyen pondéré
+        if not data_dict:
+            return
+        symbols = list(data_dict.keys())
+        # Aligner les indices avant de moyenner (dernières 200 bougies suffisent pour la pente 50)
+        basket_close = None
+        for s in symbols:
+            df = data_dict[s]
+            close_tail = df["close"].iloc[-200:]
+            if basket_close is None:
+                basket_close = close_tail.copy()
+            else:
+                # Aligne sur l'index commun (réindex sur basket_close si nécessaire)
+                aligned = close_tail.reindex(basket_close.index, method="nearest")
+                basket_close = basket_close.add(aligned, fill_value=0)
+        if basket_close is None:
+            return
+        basket_close = basket_close / max(1, len(symbols))
+        basket_df = pd.DataFrame({
+            "open": basket_close, "high": basket_close * 1.001,
+            "low": basket_close * 0.999, "close": basket_close,
+            "volume": 0,
+        })
+
+        # 3. ATR ratio (sur le 1er symbole comme proxy)
+        atr_ratio = self.regime_detector.compute_atr_ratio(data_dict[symbols[0]])
+
+        # 4. Classification
+        new_regime = self.regime_detector.classify(vix, basket_df, atr_ratio)
+        if new_regime != self.learning_state.current_regime:
+            logger.info(
+                f"[Learning] Régime change : {self.learning_state.current_regime.value} → {new_regime.value}"
+            )
+            self.learning_state.current_regime = new_regime
+            self.learning_state.regime_stable_since = datetime.now(timezone.utc).isoformat()
+
+        # Sauvegarde après chaque cycle
+        if self.learning_store:
+            self.learning_store.save(self.learning_state)
 
     def run(self):
         self.running = True

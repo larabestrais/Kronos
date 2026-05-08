@@ -104,6 +104,9 @@ def get_bot() -> TradingBot:
             ig_password=os.environ.get("IG_PASSWORD") or None,
             ig_api_key=os.environ.get("IG_API_KEY") or None,
             ig_account_type=os.environ.get("IG_ACC_TYPE", "DEMO"),
+            # --- Learning ---
+            learning_enabled=os.environ.get("KRONOS_LEARNING_ENABLED", "false").lower() == "true",
+            learning_dry_run=os.environ.get("KRONOS_LEARNING_DRY_RUN", "true").lower() == "true",
         )
 
         logger.info(f"[Bot] Modèle: {config.model_name} | Tokenizer: {config.tokenizer_name}")

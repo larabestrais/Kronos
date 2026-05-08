@@ -50,3 +50,8 @@ class BotConfig:
     trading_hours_start: str = "15:30"
     trading_hours_end: str = "22:00"
     timezone: str = "Europe/Brussels"
+
+    # --- Learning (système d'apprentissage adaptatif) ---
+    learning_enabled: bool = False
+    learning_dry_run: bool = True  # dry-run par défaut tant que warmup pas terminé
+    learning_state_path: str = "learning_state.json"
