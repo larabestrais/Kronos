@@ -252,6 +252,97 @@ def auto_scheduler_loop():
             time.sleep(120)
 
 
+def run_daily_learning_cycle():
+    """Cycle quotidien : régime, propositions, application, récap Telegram."""
+    bot = get_bot()
+    if bot.learning_state is None:
+        logger.info("[Learning] daily cycle skip (learning module disabled)")
+        return
+
+    from bot.learning import AdaptationEngine, DailyReporter
+
+    state = bot.learning_state
+    logger.info(f"[Learning] === Cycle quotidien démarré (régime: {state.current_regime.value}) ===")
+
+    # 1. Calcule drawdown récent depuis le portfolio
+    portfolio_summary = bot.portfolio.get_summary()
+    # drawdown peut être en % (ex: -3.5) ou en fraction (ex: -0.035), on normalise
+    raw_drawdown = portfolio_summary.get("drawdown", 0)
+    if isinstance(raw_drawdown, (int, float)):
+        recent_drawdown = abs(raw_drawdown) / 100.0 if abs(raw_drawdown) > 1 else abs(raw_drawdown)
+    else:
+        recent_drawdown = 0.0
+
+    # 2. AdaptationEngine
+    engine = AdaptationEngine(state, dry_run=bot.config.learning_dry_run)
+    proposals = engine.propose_adjustments(
+        recent_drawdown_pct=recent_drawdown,
+        recent_avg_vix=15.0,  # fallback ; un calcul rolling pourra être ajouté plus tard
+    )
+    auto = [p for p in proposals if p.applied_by.value == "AUTO"]
+    pending_now = [p for p in proposals if p.applied_by.value == "VALIDATION"]
+    engine.apply_auto(proposals)
+
+    # 3. Sauvegarde
+    if bot.learning_store:
+        bot.learning_store.save(state)
+
+    # 4. Calcule métriques pour le récap
+    pnl_today = portfolio_summary.get("pnl_journalier", 0.0)
+    equity = portfolio_summary.get("valeur_totale", 0.0)
+    sharpe_30d = portfolio_summary.get("sharpe_30d", 0.0)
+    win_rate_30d = portfolio_summary.get("win_rate_30d", 0.0)
+    drawdown_30d = portfolio_summary.get("drawdown_30d", -recent_drawdown)
+    expectancy_30d = portfolio_summary.get("expectancy_30d", 0.0)
+    trades_today = portfolio_summary.get("trades_today", 0)
+    wins_today = portfolio_summary.get("wins_today", 0)
+    losses_today = portfolio_summary.get("losses_today", 0)
+
+    # 5. Envoie le récap Telegram (si configuré)
+    if _telegram and _telegram.enabled:
+        reporter = DailyReporter(state)
+        msg = reporter.format_daily_message(
+            trades_today=trades_today,
+            wins_today=wins_today,
+            losses_today=losses_today,
+            pnl_today=pnl_today,
+            equity=equity,
+            sharpe_30d=sharpe_30d,
+            win_rate_30d=win_rate_30d,
+            drawdown_30d=drawdown_30d,
+            expectancy_30d=expectancy_30d,
+            auto_applied=auto,
+            pending=state.pending_approvals,
+        )
+        if state.pending_approvals:
+            kb = reporter.build_inline_keyboard(state.pending_approvals)
+            _telegram.send_with_inline_keyboard(msg, kb)
+        else:
+            _telegram.send(msg)
+
+    logger.info(f"[Learning] === Cycle terminé : {len(auto)} auto + {len(pending_now)} pending ===")
+
+
+_learning_scheduler = None
+
+
+def start_learning_scheduler():
+    """Démarre le thread scheduler pour le cycle quotidien à 22h00 CET."""
+    global _learning_scheduler
+    bot = get_bot()
+    if not bot.config.learning_enabled or _learning_scheduler is not None:
+        return
+    from bot.learning import LearningScheduler
+    _learning_scheduler = LearningScheduler(
+        callback=run_daily_learning_cycle,
+        timezone=bot.config.timezone,
+        hour=22,
+        minute=0,
+    )
+    _learning_scheduler.start()
+    logger.info("[Learning] Scheduler démarré (22h00 daily)")
+
+
 @app.route("/")
 @require_auth
 def index():
@@ -602,5 +693,7 @@ def create_app():
             _scheduler_thread.start()
             push_news("SYSTEM", f"Auto-scheduler ON — cycle toutes les {AUTO_CYCLE_INTERVAL_SECONDS // 60} min")
             logger.info(f"[AutoScheduler] Thread démarré")
+
+    start_learning_scheduler()
 
     return app
