@@ -437,6 +437,149 @@ def api_reset():
     return jsonify({"status": "reset"})
 
 
+@app.route("/api/learning/state")
+@require_auth
+def api_learning_state():
+    """Retourne l'état complet du module d'apprentissage."""
+    bot = get_bot()
+    if bot.learning_state is None:
+        return jsonify({"enabled": False}), 200
+
+    state = bot.learning_state
+    return jsonify({
+        "enabled": True,
+        "dry_run": bot.config.learning_dry_run,
+        "current_regime": state.current_regime.value,
+        "regime_stable_since": state.regime_stable_since,
+        "warmup_completed_at": state.warmup_completed_at,
+        "current_params": {
+            sym: {
+                "confidence_min": p.confidence_min,
+                "buy_threshold": p.buy_threshold,
+                "sell_threshold": p.sell_threshold,
+                "weight": p.weight,
+            }
+            for sym, p in state.current_params.items()
+        },
+        "symbol_stats_by_regime": {
+            sym: {
+                regime: {
+                    "trades": s.trades,
+                    "wins": s.wins,
+                    "losses": s.losses,
+                    "win_rate": s.win_rate,
+                    "expectancy": s.expectancy,
+                    "pnl_30d": s.pnl_30d,
+                }
+                for regime, s in by_regime.items()
+            }
+            for sym, by_regime in state.symbol_stats_by_regime.items()
+        },
+        "pending_approvals": [
+            {
+                "id": p.id,
+                "type": p.type,
+                "param_path": p.param_path,
+                "from_value": p.from_value,
+                "to_value": p.to_value,
+                "reason": p.reason,
+                "confidence_score": p.confidence_score,
+                "proposed_at": p.proposed_at,
+            }
+            for p in state.pending_approvals
+        ],
+        "global_leverage": state.global_leverage,
+        "global_stop_loss_pct": state.global_stop_loss_pct,
+        "global_take_profit_pct": state.global_take_profit_pct,
+        "defensive_mode": state.defensive_mode,
+        "param_history_recent": [
+            {
+                "timestamp": p.proposed_at,
+                "param_path": p.param_path,
+                "from_value": p.from_value,
+                "to_value": p.to_value,
+                "reason": p.reason,
+                "applied_by": p.applied_by.value if hasattr(p.applied_by, "value") else str(p.applied_by),
+            }
+            for p in state.param_history[-20:]
+        ],
+    }), 200
+
+
+@app.route("/api/learning/reset", methods=["POST"])
+@require_auth
+def api_learning_reset():
+    """Remet learning_state.json à vide (retour usine)."""
+    bot = get_bot()
+    if bot.learning_state is None:
+        return jsonify({"ok": False, "message": "Learning module not enabled"}), 400
+
+    from bot.learning.types import LearningState
+    bot.learning_state = LearningState()
+    if bot.learning_store:
+        bot.learning_store.save(bot.learning_state)
+    if bot.tracker:
+        bot.tracker.state = bot.learning_state
+    logger.info("[Learning] State reset by user via API")
+    return jsonify({"ok": True, "message": "Learning state réinitialisé"}), 200
+
+
+@app.route("/api/learning/approve/<proposal_id>", methods=["POST"])
+@require_auth
+def api_learning_approve(proposal_id: str):
+    """Applique une proposition VALIDATION."""
+    bot = get_bot()
+    if bot.learning_state is None:
+        return jsonify({"ok": False, "message": "Learning module not enabled"}), 400
+
+    state = bot.learning_state
+    proposal = next((p for p in state.pending_approvals if p.id == proposal_id), None)
+    if proposal is None:
+        return jsonify({"ok": False, "message": "Proposition introuvable"}), 404
+
+    from bot.learning.engine import AdaptationEngine
+    from bot.learning.types import ProposalStatus
+    engine = AdaptationEngine(state)
+    engine._apply_to_state(proposal)
+    proposal.applied_by = ProposalStatus.VALIDATION
+    state.param_history.append(proposal)
+    state.pending_approvals.remove(proposal)
+    if bot.learning_store:
+        bot.learning_store.save(state)
+    logger.info(f"[Learning] Proposition {proposal_id} validée par utilisateur")
+    return jsonify({"ok": True}), 200
+
+
+@app.route("/api/learning/reject/<proposal_id>", methods=["POST"])
+@require_auth
+def api_learning_reject(proposal_id: str):
+    """Rejette une proposition VALIDATION et la met en cooldown 7j."""
+    from datetime import datetime, timezone, timedelta
+    from bot.learning.types import RejectedProposal
+    from bot.learning.engine import AdaptationEngine
+
+    bot = get_bot()
+    if bot.learning_state is None:
+        return jsonify({"ok": False, "message": "Learning module not enabled"}), 400
+
+    state = bot.learning_state
+    proposal = next((p for p in state.pending_approvals if p.id == proposal_id), None)
+    if proposal is None:
+        return jsonify({"ok": False, "message": "Proposition introuvable"}), 404
+
+    cooldown_until = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+    state.rejected_proposals.append(RejectedProposal(
+        proposal_hash=AdaptationEngine._proposal_hash(proposal),
+        rejected_at=datetime.now(timezone.utc).isoformat(),
+        cooldown_until=cooldown_until,
+    ))
+    state.pending_approvals.remove(proposal)
+    if bot.learning_store:
+        bot.learning_store.save(state)
+    logger.info(f"[Learning] Proposition {proposal_id} rejetée, cooldown jusqu'à {cooldown_until}")
+    return jsonify({"ok": True}), 200
+
+
 def create_app():
     push_news("SYSTEM", "Dashboard Kronos initialisé")
     if AUTH_ENABLED:
