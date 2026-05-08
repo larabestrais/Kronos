@@ -60,6 +60,11 @@ class Portfolio:
         self.save_path = Path(save_path)
         self._equity_curve: list[dict] = []
 
+        # Callbacks called when a position is closed. Each callback receives
+        # (trade: Trade, entry_price: float). Used by learning module.
+        # Type: list[Callable[[Trade, float], None]]
+        self.on_position_closed_callbacks: list = []
+
     @property
     def margin_used(self) -> float:
         """Marge réservée par toutes les positions ouvertes (positions / leverage)."""
@@ -124,10 +129,18 @@ class Portfolio:
         self.cash += margin + pnl
 
         now = pd.Timestamp.now().isoformat()
-        self.trades.append(Trade(
+        trade = Trade(
             symbol=symbol, side=f"CLOSE_{pos.side}", shares=pos.shares,
             price=price, timestamp=now, pnl=pnl, reason=reason,
-        ))
+        )
+        self.trades.append(trade)
+
+        # Emit callbacks (defensive: never let a callback crash the bot)
+        for cb in self.on_position_closed_callbacks:
+            try:
+                cb(trade, pos.entry_price)
+            except Exception as e:
+                logger.exception(f"[Portfolio] on_position_closed callback failed: {e}")
 
         self.daily_pnl += pnl
         del self.positions[symbol]
