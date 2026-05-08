@@ -252,6 +252,57 @@
     </div>
   </div>
 
+  <!-- === LEARNING PANEL === -->
+  <section id="learning-panel" class="learning-panel">
+    <h2 class="panel-title">🧠 Apprentissage Adaptatif</h2>
+    <div class="learning-grid">
+
+      <div class="learning-card">
+        <h3>🌡️ Régime actuel</h3>
+        <div id="learning-regime-display">
+          <span class="regime-badge regime-RANGING">RANGING</span>
+          <p class="regime-meta" id="learning-regime-meta">Module désactivé</p>
+        </div>
+      </div>
+
+      <div class="learning-card">
+        <h3>⚙️ Paramètres par symbole</h3>
+        <div class="learning-table-wrapper">
+          <table class="learning-params-table">
+            <thead>
+              <tr>
+                <th>Symbole</th><th>Confidence</th><th>Buy thr</th><th>Win rate</th><th>Trades</th>
+              </tr>
+            </thead>
+            <tbody id="learning-params-tbody">
+              <tr><td colspan="5">Chargement...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="learning-card" id="learning-pending-card" hidden>
+        <h3>🔔 Validations en attente</h3>
+        <div id="learning-pending-list"></div>
+      </div>
+
+      <div class="learning-card learning-card-wide">
+        <h3>📜 Historique des ajustements (20 derniers)</h3>
+        <ul id="learning-history-list" class="learning-history">
+          <li>Aucun ajustement encore</li>
+        </ul>
+      </div>
+
+      <div class="learning-card">
+        <h3>🛟 Réglages</h3>
+        <button id="learning-reset-btn" class="btn btn-danger">
+          🔄 Reset paramètres à la config initiale
+        </button>
+      </div>
+
+    </div>
+  </section>
+
   <!-- BOTTOM BAR -->
   <div class="bottom-bar">
     <button class="action-btn" id="run-cycle-btn">▶ LANCER CYCLE</button>

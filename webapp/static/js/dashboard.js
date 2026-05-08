@@ -840,3 +840,120 @@ document.addEventListener('DOMContentLoaded', () => {
   drawEquityChart([]);
   drawVolumeChart([]);
 });
+
+// === Learning panel ===
+
+async function loadLearningState() {
+  try {
+    const r = await fetch("/api/learning/state");
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.enabled) {
+      const meta = document.getElementById("learning-regime-meta");
+      if (meta) meta.textContent = "Module désactivé. Définir KRONOS_LEARNING_ENABLED=true pour l'activer.";
+      const tbody = document.getElementById("learning-params-tbody");
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5">Module désactivé</td></tr>';
+      return;
+    }
+    renderLearningRegime(data);
+    renderLearningParams(data);
+    renderLearningPending(data);
+    renderLearningHistory(data);
+  } catch (e) {
+    console.error("[Learning] load failed", e);
+  }
+}
+
+function renderLearningRegime(data) {
+  const badge = document.querySelector("#learning-regime-display .regime-badge");
+  if (badge) {
+    badge.className = `regime-badge regime-${data.current_regime}`;
+    badge.textContent = data.current_regime;
+  }
+  const meta = document.getElementById("learning-regime-meta");
+  if (meta) {
+    const dryRun = data.dry_run ? " (DRY-RUN)" : "";
+    meta.textContent = `Stable depuis : ${data.regime_stable_since || 'N/A'} | Levier global : ${data.global_leverage}x${dryRun}`;
+  }
+}
+
+function renderLearningParams(data) {
+  const tbody = document.getElementById("learning-params-tbody");
+  if (!tbody) return;
+  const symbols = Object.keys(data.current_params);
+  if (symbols.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5">Pas encore de paramètres adaptés</td></tr>';
+    return;
+  }
+  tbody.innerHTML = symbols.map(sym => {
+    const p = data.current_params[sym];
+    const stats = data.symbol_stats_by_regime[sym]?.[data.current_regime];
+    const wr = stats ? `${(stats.win_rate * 100).toFixed(0)}%` : "--";
+    const tr = stats ? stats.trades : "--";
+    return `<tr>
+      <td><b>${sym}</b></td>
+      <td>${p.confidence_min.toFixed(3)}</td>
+      <td>${(p.buy_threshold * 100).toFixed(2)}%</td>
+      <td>${wr}</td>
+      <td>${tr}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderLearningPending(data) {
+  const card = document.getElementById("learning-pending-card");
+  const list = document.getElementById("learning-pending-list");
+  if (!card || !list) return;
+  if (!data.pending_approvals || data.pending_approvals.length === 0) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  list.innerHTML = data.pending_approvals.map(p => `
+    <div class="pending-item">
+      <p><b>${p.type}</b>: ${p.from_value} → ${p.to_value}</p>
+      <p class="reason"><i>${p.reason}</i></p>
+      <button onclick="approveLearningProposal('${p.id}')" class="btn btn-success">✅ Valider</button>
+      <button onclick="rejectLearningProposal('${p.id}')" class="btn btn-danger">❌ Refuser</button>
+    </div>
+  `).join("");
+}
+
+function renderLearningHistory(data) {
+  const list = document.getElementById("learning-history-list");
+  if (!list) return;
+  if (!data.param_history_recent || data.param_history_recent.length === 0) {
+    list.innerHTML = '<li>Aucun ajustement encore</li>';
+    return;
+  }
+  list.innerHTML = data.param_history_recent.slice().reverse().map(p => `
+    <li>
+      <span class="ts">${p.timestamp.slice(0, 16).replace('T', ' ')}</span>
+      <span class="tag tag-${p.applied_by.toLowerCase()}">${p.applied_by}</span>
+      <code>${p.param_path}</code> :
+      <code>${p.from_value} → ${p.to_value}</code>
+      <br><span class="reason">${p.reason}</span>
+    </li>
+  `).join("");
+}
+
+async function approveLearningProposal(id) {
+  if (!confirm("Valider cet ajustement ?")) return;
+  await fetch(`/api/learning/approve/${id}`, {method: "POST"});
+  loadLearningState();
+}
+
+async function rejectLearningProposal(id) {
+  await fetch(`/api/learning/reject/${id}`, {method: "POST"});
+  loadLearningState();
+}
+
+document.getElementById("learning-reset-btn")?.addEventListener("click", async () => {
+  if (!confirm("Sûr ? Cela remet TOUS les paramètres adaptatifs à zéro.")) return;
+  await fetch("/api/learning/reset", {method: "POST"});
+  loadLearningState();
+});
+
+// Charge au démarrage et rafraîchit toutes les 30 sec
+loadLearningState();
+setInterval(loadLearningState, 30000);
