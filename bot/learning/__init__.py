@@ -22,6 +22,7 @@ from .bounds import (
     MAX_DAILY_CHANGE_PCT,
 )
 from .storage import LearningStateStore
+from .regime import RegimeDetector
 
 __all__ = [
     "Regime",
@@ -40,4 +41,5 @@ __all__ = [
     "DEFENSIVE_REDUCTION_BOUNDS",
     "MAX_DAILY_CHANGE_PCT",
     "LearningStateStore",
+    "RegimeDetector",
 ]
