@@ -21,6 +21,7 @@ from .bounds import (
     DEFENSIVE_REDUCTION_BOUNDS,
     MAX_DAILY_CHANGE_PCT,
 )
+from .storage import LearningStateStore
 
 __all__ = [
     "Regime",
@@ -38,4 +39,5 @@ __all__ = [
     "WEIGHT_BOUNDS",
     "DEFENSIVE_REDUCTION_BOUNDS",
     "MAX_DAILY_CHANGE_PCT",
+    "LearningStateStore",
 ]
