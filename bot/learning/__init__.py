@@ -11,6 +11,16 @@ from .types import (
     RejectedProposal,
     LearningState,
 )
+from .bounds import (
+    clamp,
+    is_within_daily_change_cap,
+    CONFIDENCE_MIN_BOUNDS,
+    BUY_THRESHOLD_BOUNDS,
+    SELL_THRESHOLD_BOUNDS,
+    WEIGHT_BOUNDS,
+    DEFENSIVE_REDUCTION_BOUNDS,
+    MAX_DAILY_CHANGE_PCT,
+)
 
 __all__ = [
     "Regime",
@@ -20,4 +30,12 @@ __all__ = [
     "ProposedAdjustment",
     "RejectedProposal",
     "LearningState",
+    "clamp",
+    "is_within_daily_change_cap",
+    "CONFIDENCE_MIN_BOUNDS",
+    "BUY_THRESHOLD_BOUNDS",
+    "SELL_THRESHOLD_BOUNDS",
+    "WEIGHT_BOUNDS",
+    "DEFENSIVE_REDUCTION_BOUNDS",
+    "MAX_DAILY_CHANGE_PCT",
 ]
