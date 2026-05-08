@@ -60,6 +60,66 @@ class TelegramNotifier:
                 logger.error(f"[Telegram] Erreur envoi: {e}")
                 return False
 
+    def send_with_inline_keyboard(
+        self,
+        message: str,
+        buttons: list[list[dict]],
+        silent: bool = False,
+    ) -> Optional[int]:
+        """
+        Envoie un message avec un clavier inline.
+        `buttons` : liste de rangées de boutons. Chaque bouton est un dict
+                    {"text": str, "callback_data": str}.
+        Retourne le message_id de Telegram (utile pour edit ultérieur), ou None.
+        """
+        if not self.enabled:
+            return None
+
+        with self._send_lock:
+            elapsed = time.time() - self._last_send_at
+            if elapsed < self._min_interval:
+                time.sleep(self._min_interval - elapsed)
+
+            url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+            try:
+                r = requests.post(url, json={
+                    "chat_id": self.chat_id,
+                    "text": message,
+                    "parse_mode": self.parse_mode,
+                    "disable_notification": silent,
+                    "disable_web_page_preview": True,
+                    "reply_markup": {"inline_keyboard": buttons},
+                }, timeout=8)
+                self._last_send_at = time.time()
+
+                if r.status_code != 200:
+                    logger.warning(f"[Telegram] HTTP {r.status_code}: {r.text[:200]}")
+                    return None
+
+                data = r.json()
+                return data.get("result", {}).get("message_id")
+            except Exception as e:
+                logger.error(f"[Telegram] Erreur envoi clavier: {e}")
+                return None
+
+    def edit_message(self, message_id: int, new_text: str) -> bool:
+        """Edit un message existant (pour confirmer une approbation)."""
+        if not self.enabled or not message_id:
+            return False
+
+        url = f"https://api.telegram.org/bot{self.bot_token}/editMessageText"
+        try:
+            r = requests.post(url, json={
+                "chat_id": self.chat_id,
+                "message_id": message_id,
+                "text": new_text,
+                "parse_mode": self.parse_mode,
+            }, timeout=8)
+            return r.status_code == 200
+        except Exception as e:
+            logger.error(f"[Telegram] Erreur edit: {e}")
+            return False
+
     def test(self) -> bool:
         """Envoie un message de test pour valider la config."""
         msg = (
