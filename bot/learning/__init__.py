@@ -4,6 +4,7 @@ Voir docs/superpowers/specs/2026-05-08-kronos-adaptive-learning-design.md
 """
 from .types import (
     Regime,
+    ProposalStatus,
     SymbolStats,
     SymbolParams,
     ProposedAdjustment,
@@ -13,6 +14,7 @@ from .types import (
 
 __all__ = [
     "Regime",
+    "ProposalStatus",
     "SymbolStats",
     "SymbolParams",
     "ProposedAdjustment",

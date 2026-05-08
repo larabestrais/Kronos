@@ -18,6 +18,14 @@ class Regime(str, Enum):
     HIGH_VOLATILITY = "HIGH_VOLATILITY"
 
 
+class ProposalStatus(str, Enum):
+    """Statut d'application d'une proposition d'ajustement."""
+    AUTO = "AUTO"
+    VALIDATION = "VALIDATION"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
+
+
 @dataclass
 class SymbolStats:
     """Statistiques d'un symbole dans un régime donné."""
@@ -52,13 +60,13 @@ class ProposedAdjustment:
     id: str
     type: str            # ex: "confidence_min_change", "leverage_change", "skip_hour"
     param_path: str      # ex: "current_params.AAPL.confidence_min"
-    from_value: float
-    to_value: float
+    from_value: float | int | bool
+    to_value: float | int | bool
     reason: str
     confidence_score: float  # 0-1, la confiance dans la proposition
     proposed_at: str         # ISO 8601 UTC
-    applied_by: str          # "AUTO" | "VALIDATION" | "REJECTED" | "EXPIRED"
-    regime_at_time: Optional[str] = None
+    applied_by: ProposalStatus
+    regime_at_time: Optional[Regime] = None
     expires_at: Optional[str] = None
 
 
