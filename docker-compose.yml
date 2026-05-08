@@ -24,6 +24,9 @@ services:
       # --- Notifications Telegram (optionnel) ---
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      # --- Apprentissage adaptatif (optionnel, off par défaut) ---
+      - KRONOS_LEARNING_ENABLED=${KRONOS_LEARNING_ENABLED:-false}
+      - KRONOS_LEARNING_DRY_RUN=${KRONOS_LEARNING_DRY_RUN:-true}
     volumes:
       # État persistant du portfolio (survit aux redémarrages)
       - kronos-data:/app/data

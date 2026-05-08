@@ -48,7 +48,7 @@ class Backtester:
             max_position_pct=config.max_position_pct,
         )
 
-    def run(self, symbol: str, window_size: int = 400, step: int = 10) -> dict:
+    def run(self, symbol: str, window_size: int = 400, step: int = 10, with_learning: bool = False) -> dict:
         logger.info(f"=== Backtest {symbol} ===")
 
         full_data = self.data_fetcher.fetch(symbol, lookback=5000)
@@ -57,6 +57,19 @@ class Backtester:
 
         portfolio = Portfolio(initial_capital=self.config.initial_capital)
         trader = PaperTrader(portfolio, self.risk_manager)
+
+        # --- Learning (optional, enabled with --with-learning flag) ---
+        learning_state = None
+        learning_tracker = None
+        learning_engine = None
+        if with_learning:
+            from bot.learning import (
+                LearningState, PerformanceTracker, AdaptationEngine,
+            )
+            learning_state = LearningState()
+            learning_tracker = PerformanceTracker(learning_state)
+            learning_engine = AdaptationEngine(learning_state, dry_run=False)
+            print("[Backtest] Learning module activated (collecting stats during replay)")
 
         total_steps = (len(full_data) - window_size - self.config.pred_len) // step
         logger.info(f"Données: {len(full_data)} bougies | {total_steps} étapes de backtest")
@@ -109,6 +122,24 @@ class Backtester:
         for symbol_pos in list(portfolio.positions.keys()):
             last_price = full_data["close"].iloc[-1]
             portfolio.close_position(symbol_pos, last_price, reason="Fin backtest")
+
+        # Feed all closed trades to the learning tracker (post-hoc, regime defaults to RANGING)
+        if learning_tracker is not None:
+            from bot.learning.types import Regime
+            for t in portfolio.trades:
+                if "CLOSE" in t.side:
+                    learning_tracker.record_closed_trade(t, regime=Regime.RANGING)
+
+        if learning_state is not None:
+            print("\n=== Learning module summary ===")
+            for sym, by_regime in learning_state.symbol_stats_by_regime.items():
+                for regime, stats in by_regime.items():
+                    if stats.trades > 0:
+                        print(f"  {sym} {regime}: {stats.trades} trades, "
+                              f"win_rate={stats.win_rate:.0%}, "
+                              f"expectancy={stats.expectancy:+.4f}")
+            proposals = learning_engine.propose_adjustments() if learning_engine else []
+            print(f"  Total proposals computed: {len(proposals)}")
 
         summary = portfolio.get_summary()
         results_df = pd.DataFrame(results)
@@ -183,6 +214,11 @@ def main():
     parser.add_argument("--model", default="NeoQuasar/Kronos-small", help="Modèle Kronos")
     parser.add_argument("--save", type=str, help="Sauvegarder résultats en JSON")
     parser.add_argument("--log-level", default="INFO")
+    parser.add_argument(
+        "--with-learning",
+        action="store_true",
+        help="Active le module d'apprentissage pendant le backtest (collecte stats, applique ajustements en dry-run)",
+    )
 
     args = parser.parse_args()
 
@@ -200,7 +236,12 @@ def main():
     )
 
     backtester = Backtester(config)
-    result = backtester.run(args.symbol, window_size=args.window, step=args.step)
+    result = backtester.run(
+        args.symbol,
+        window_size=args.window,
+        step=args.step,
+        with_learning=args.with_learning,
+    )
 
     print_report(args.symbol, result)
 
