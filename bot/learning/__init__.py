@@ -26,6 +26,7 @@ from .regime import RegimeDetector
 from .tracker import PerformanceTracker
 from .engine import AdaptationEngine
 from .reporter import DailyReporter
+from .scheduler import LearningScheduler
 
 __all__ = [
     "Regime",
@@ -48,4 +49,5 @@ __all__ = [
     "PerformanceTracker",
     "AdaptationEngine",
     "DailyReporter",
+    "LearningScheduler",
 ]
