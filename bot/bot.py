@@ -178,6 +178,18 @@ class TradingBot:
                 continue
 
             signal = self.signal_engine.generate(symbol, data_dict[symbol], predictions[symbol])
+
+            # === Earnings blackout : force HOLD si symbole en fenêtre earnings ===
+            from .learning.engine import is_in_earnings_blackout
+            if is_in_earnings_blackout(symbol):
+                if signal.action != Action.HOLD:
+                    logger.warning(
+                        f"[Earnings] {symbol} en blackout earnings — "
+                        f"signal {signal.action.value} ignoré"
+                    )
+                signal.action = Action.HOLD
+                signal.reason = f"EARNINGS_BLACKOUT — abstention forcée (voir EARNINGS_BLACKOUT_DATES)"
+
             cycle_results["signals"].append(signal)
 
             if signal.action != Action.HOLD:

@@ -32,6 +32,44 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
+
+from datetime import date as _date
+
+
+# === Earnings Blackout ===
+# Date des earnings des symboles + 1 jour de marge de chaque côté.
+# Source : briefing marché du 2026-05-11 (WebSearch MarketBeat / TipRanks / Wallstreet Horizon).
+# Le bot s'abstient de toute nouvelle position sur ces symboles pendant la fenêtre.
+# À mettre à jour quand les dates des prochains trimestres sont confirmées.
+EARNINGS_BLACKOUT_DATES: dict[str, tuple[_date, _date]] = {
+    "NVDA":  (_date(2026, 5, 19), _date(2026, 5, 21)),   # Q1 FY27 — confirmé 20/05
+    "INTC":  (_date(2026, 7, 22), _date(2026, 7, 24)),   # Q2 2026 — projection 23/07
+    "GOOGL": (_date(2026, 7, 27), _date(2026, 7, 29)),   # Q2 2026 — confirmé 28/07
+    "MSFT":  (_date(2026, 7, 27), _date(2026, 7, 30)),   # Q4 FY26 — confirmé 28-29/07
+    "TSLA":  (_date(2026, 7, 28), _date(2026, 7, 30)),   # Q2 2026 — projection 29/07
+    "AAPL":  (_date(2026, 7, 29), _date(2026, 7, 31)),   # Q3 FY26 — forecast 30/07
+}
+
+
+def is_in_earnings_blackout(symbol: str, today: _date | None = None) -> bool:
+    """
+    Retourne True si le symbole est dans sa fenêtre de blackout earnings aujourd'hui.
+    Le bot doit alors s'abstenir d'ouvrir ou de modifier une position sur ce symbole.
+
+    `today` paramétrable pour les tests ; sinon utilise la date du jour (UTC).
+    """
+    if today is None:
+        from datetime import datetime, timezone
+        today = datetime.now(timezone.utc).date()
+
+    window = EARNINGS_BLACKOUT_DATES.get(symbol)
+    if window is None:
+        return False
+
+    start, end = window
+    return start <= today <= end
+
+
 # Seuils des règles
 MIN_TRADES_FOR_ADJUSTMENT = 10
 MIN_TRADES_FOR_WEIGHT_ADJUSTMENT = 20
