@@ -1,0 +1,6 @@
+-r requirements.txt
+yfinance>=0.2.30
+pytz
+flask>=3.0.0
+trading-ig>=0.0.20
+tenacity>=8.0.0

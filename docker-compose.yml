@@ -1,0 +1,49 @@
+services:
+  kronos-bot:
+    # Image pré-construite (multi-arch ARM64 + AMD64) publiée par GitHub Actions
+    image: ghcr.io/larabestrais/kronos-trading-bot:latest
+    # Build local possible avec `docker compose build` si tu modifies le code
+    build: .
+    container_name: kronos-bot
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    environment:
+      - DASHBOARD_USER=${DASHBOARD_USER:-kronos}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD}
+      - PORTFOLIO_STATE_PATH=/app/data/portfolio_state.json
+      - TZ=${TZ:-Europe/Brussels}
+      # --- Source de données (yfinance ou ig) ---
+      - KRONOS_DATA_SOURCE=${KRONOS_DATA_SOURCE:-yfinance}
+      # --- IG Markets API (optionnel, requis si KRONOS_DATA_SOURCE=ig) ---
+      - IG_USERNAME=${IG_USERNAME:-}
+      - IG_PASSWORD=${IG_PASSWORD:-}
+      - IG_API_KEY=${IG_API_KEY:-}
+      - IG_ACC_TYPE=${IG_ACC_TYPE:-DEMO}
+      # --- Notifications Telegram (optionnel) ---
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      # --- Apprentissage adaptatif (optionnel, off par défaut) ---
+      - KRONOS_LEARNING_ENABLED=${KRONOS_LEARNING_ENABLED:-false}
+      - KRONOS_LEARNING_DRY_RUN=${KRONOS_LEARNING_DRY_RUN:-true}
+    volumes:
+      # État persistant du portfolio (survit aux redémarrages)
+      - kronos-data:/app/data
+      # Cache des modèles Kronos téléchargés depuis HuggingFace (évite de retélécharger)
+      - kronos-models:/app/.cache/huggingface
+    # Limites raisonnables pour un NAS 4 Go
+    mem_limit: 3g
+    mem_reservation: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u $${DASHBOARD_USER}:$${DASHBOARD_PASSWORD} http://localhost:5050/api/state || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  kronos-data:
+    name: kronos-data
+  kronos-models:
+    name: kronos-models

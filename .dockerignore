@@ -1,0 +1,37 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+.pytest_cache
+
+# Virtual envs
+venv/
+env/
+.venv/
+
+# Local state — provided via volume mounts
+.env
+portfolio_state.json
+
+# IDE / OS
+.vscode/
+.idea/
+.claude/
+.DS_Store
+*.swp
+
+# Git
+.git
+.gitignore
+
+# Docs
+*.md
+!BOT_README.md
+
+# Build artifacts
+dist/
+build/
+*.log

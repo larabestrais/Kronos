@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#06070b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>KRONOS SIGNAL // GRILLE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+
+<div class="scanline"></div>
+<div class="grid-overlay"></div>
+
+<div class="dashboard">
+
+  <!-- TOP ROW: BRAND + STATS -->
+  <div class="row top-row">
+    <div class="card brand-card">
+      <div class="card-corners"></div>
+      <div class="brand">
+        <div class="brand-logo">◆</div>
+        <div class="brand-text">
+          <div class="brand-name">KRONOS SIGNAL</div>
+          <div class="brand-subtitle">// GRILLE <span class="version">v1.0</span></div>
+        </div>
+      </div>
+      <div class="brand-meta">
+        <span>NŒUD 04</span>
+        <span class="dot">·</span>
+        <span>SEC <span id="sec-counter">000</span></span>
+        <span class="dot">·</span>
+        <span class="status-online"><span class="pulse-dot"></span> EN LIGNE</span>
+      </div>
+    </div>
+
+    <div class="card stat-card">
+      <div class="card-corners"></div>
+      <div class="stat-label">P&amp;L</div>
+      <div class="stat-value" id="stat-pnl">+0,00 $</div>
+    </div>
+
+    <div class="card stat-card">
+      <div class="card-corners"></div>
+      <div class="stat-label">RÉUSSITE</div>
+      <div class="stat-value" id="stat-win">0%</div>
+      <div class="stat-sub" id="stat-win-sub">0 TRADES</div>
+    </div>
+
+    <div class="card stat-card">
+      <div class="card-corners"></div>
+      <div class="stat-label">DURÉE</div>
+      <div class="stat-value" id="stat-hold">0H</div>
+      <div class="stat-sub">MOYENNE</div>
+    </div>
+
+    <div class="card stat-card">
+      <div class="card-corners"></div>
+      <div class="stat-label">POS.</div>
+      <div class="stat-value" id="stat-pos">0</div>
+      <div class="stat-sub">OUVERTES</div>
+    </div>
+
+    <div class="card stat-card">
+      <div class="card-corners"></div>
+      <div class="stat-label">SCAN</div>
+      <div class="stat-value" id="stat-scan">0/H</div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="row main-row">
+
+    <!-- LEFT COLUMN -->
+    <div class="col col-left">
+
+      <div class="card signal-radar">
+        <div class="card-corners"></div>
+        <div class="card-header">
+          <span class="card-title">▣ RADAR SIGNAUX</span>
+          <span class="live-badge"><span class="live-dot"></span> LIVE</span>
+        </div>
+        <div class="signal-list" id="signal-list">
+          <div class="empty-state">EN ATTENTE DE CYCLE...</div>
+        </div>
+      </div>
+
+      <div class="card news-ribbon">
+        <div class="card-corners"></div>
+        <div class="card-header">
+          <span class="card-title">▣ FIL D'ACTIVITÉ</span>
+          <span class="live-badge"><span class="live-dot"></span> LIVE</span>
+        </div>
+        <div class="news-list" id="news-list">
+          <div class="empty-state">EN ATTENTE...</div>
+        </div>
+      </div>
+
+      <div class="card desk-metrics">
+        <div class="card-corners"></div>
+        <div class="card-header">
+          <span class="card-title">▣ MÉTRIQUES</span>
+        </div>
+        <div class="metric-block">
+          <div class="metric-row">
+            <span class="metric-label">PROCHAIN CYCLE</span>
+            <span class="live-badge"><span class="live-dot"></span> LIVE</span>
+          </div>
+          <div class="flow-timer" id="flow-timer">00:00:00</div>
+        </div>
+        <div class="metric-grid">
+          <div>
+            <div class="metric-label">CAPITAL ENGAGÉ</div>
+            <div class="metric-value" id="cap-deployed">0 $</div>
+          </div>
+          <div>
+            <div class="metric-label">VITESSE</div>
+            <div class="metric-value" id="cap-velocity">0x</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CENTER COLUMN -->
+    <div class="col col-center">
+
+      <div class="card pulse-card">
+        <div class="card-corners"></div>
+        <div class="card-header">
+          <span class="card-title">▣ PULSE / <span id="chart-symbol-label">EQUITY</span> · <span id="chart-tf-label">1J</span></span>
+          <div class="pulse-tabs">
+            <select id="symbol-select" class="symbol-select" title="Symbole"></select>
+            <span class="tab-divider">|</span>
+            <button class="tf-tab" data-tf="1m">1m</button>
+            <button class="tf-tab" data-tf="5m">5m</button>
+            <button class="tf-tab" data-tf="15m">15m</button>
+            <button class="tf-tab" data-tf="1h">1H</button>
+            <button class="tf-tab active" data-tf="1d">1J</button>
+            <span class="tab-divider">|</span>
+            <button class="tf-tab tf-toggle" data-tf="equity">P&amp;L</button>
+            <span class="live-badge live-badge-large"><span class="live-dot"></span> LIVE</span>
+          </div>
+        </div>
+
+        <div class="pulse-main">
+          <div class="pulse-pnl-block">
+            <div class="pulse-pnl" id="pulse-pnl">+0,00 $</div>
+            <div class="pulse-meta">
+              <span class="meta-positive" id="pulse-pct">▲ +0,0% TOTAL</span>
+              <span class="sharpe">SHARPE <span id="sharpe">0.00</span></span>
+            </div>
+            <div class="pulse-pills">
+              <span class="pill pill-orange">★ RISQUE ACTIF</span>
+              <span class="pill pill-pink">★ KRONOS LIVE</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-wrapper">
+          <canvas id="equity-chart"></canvas>
+        </div>
+
+        <div class="volume-wrapper">
+          <canvas id="volume-chart"></canvas>
+        </div>
+
+        <div class="pulse-bottom">
+          <div class="pulse-bottom-bar">
+            <span class="bottom-percent" id="bid-flow-pct">73%</span>
+            <span class="bottom-label">FLUX ACHETEUR</span>
+            <div class="bottom-progress">
+              <div class="bottom-progress-fill" id="bid-flow-bar" style="width: 73%"></div>
+            </div>
+            <span class="bottom-label-right">5 MIN GLISSANT</span>
+          </div>
+        </div>
+
+        <div class="pulse-stats">
+          <div class="pulse-stat">
+            <div class="pulse-stat-label">NOTIONNEL</div>
+            <div class="pulse-stat-value" id="notional">+0</div>
+          </div>
+          <div class="pulse-stat">
+            <div class="pulse-stat-label">VITESSE EXÉC</div>
+            <div class="pulse-stat-value" id="match-speed">42<span class="unit">ms</span></div>
+          </div>
+          <div class="pulse-stat">
+            <div class="pulse-stat-label">IMPACT (PB)</div>
+            <div class="pulse-stat-value" id="impact-bps">0.00</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col col-right">
+
+      <div class="card flow-card">
+        <div class="card-corners"></div>
+        <div class="card-header">
+          <span class="card-title">▣ FLUX</span>
+        </div>
+        <div class="flow-percent" id="flow-percent">0%</div>
+        <div class="flow-direction" id="flow-direction">LONG</div>
+        <div class="flow-pnl">
+          <span class="metric-label">P&amp;L</span>
+          <span class="flow-pnl-value" id="flow-pnl">+0,00 $</span>
+        </div>
+      </div>
+
+      <div class="card whale-card">
+        <div class="card-corners"></div>
+        <div class="card-header">
+          <span class="card-title">▣ POSITIONS</span>
+          <span class="badge-count"><span id="positions-count">0</span> OUVERTES</span>
+        </div>
+        <div class="whale-list" id="positions-list">
+          <div class="empty-state">AUCUNE POSITION</div>
+        </div>
+      </div>
+
+      <div class="card strategy-card">
+        <div class="card-corners"></div>
+        <div class="card-header">
+          <span class="card-title">▣ CONFIANCE</span>
+        </div>
+        <div class="strategy-bars">
+          <div class="strat-row"><span>FAIBLE</span><div class="bar"><div class="bar-fill" id="conf-low" style="width: 0%"></div></div></div>
+          <div class="strat-row"><span>MOYEN</span><div class="bar"><div class="bar-fill" id="conf-med" style="width: 0%"></div></div></div>
+          <div class="strat-row"><span>HAUTE</span><div class="bar"><div class="bar-fill" id="conf-high" style="width: 0%"></div></div></div>
+        </div>
+      </div>
+
+      <div class="card sector-card">
+        <div class="card-corners"></div>
+        <div class="card-header">
+          <span class="card-title">▣ RENDEMENT</span>
+          <span class="badge-count" id="sector-count">0 SYM</span>
+        </div>
+        <div class="sector-list" id="sector-list">
+          <div class="empty-state">EN ATTENTE...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- === LEARNING PANEL === -->
+  <section id="learning-panel" class="learning-panel">
+    <h2 class="panel-title">🧠 Apprentissage Adaptatif</h2>
+    <div class="learning-grid">
+
+      <div class="learning-card">
+        <h3>🌡️ Régime actuel</h3>
+        <div id="learning-regime-display">
+          <span class="regime-badge regime-RANGING">RANGING</span>
+          <p class="regime-meta" id="learning-regime-meta">Module désactivé</p>
+        </div>
+      </div>
+
+      <div class="learning-card">
+        <h3>⚙️ Paramètres par symbole</h3>
+        <div class="learning-table-wrapper">
+          <table class="learning-params-table">
+            <thead>
+              <tr>
+                <th>Symbole</th><th>Confidence</th><th>Buy thr</th><th>Win rate</th><th>Trades</th>
+              </tr>
+            </thead>
+            <tbody id="learning-params-tbody">
+              <tr><td colspan="5">Chargement...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="learning-card" id="learning-pending-card" hidden>
+        <h3>🔔 Validations en attente</h3>
+        <div id="learning-pending-list"></div>
+      </div>
+
+      <div class="learning-card learning-card-wide">
+        <h3>📜 Historique des ajustements (20 derniers)</h3>
+        <ul id="learning-history-list" class="learning-history">
+          <li>Aucun ajustement encore</li>
+        </ul>
+      </div>
+
+      <div class="learning-card">
+        <h3>🛟 Réglages</h3>
+        <button id="learning-reset-btn" class="btn btn-danger">
+          🔄 Reset paramètres à la config initiale
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    <button class="action-btn" id="run-cycle-btn">▶ LANCER CYCLE</button>
+    <button class="action-btn action-btn-secondary" id="reset-btn">⟲ RÉINITIALISER</button>
+    <div class="bottom-info">
+      <span class="info-label">MODÈLE</span>
+      <span class="info-value" id="info-model">Kronos-small</span>
+      <span class="dot">·</span>
+      <span class="info-label">LONG. PRÉD</span>
+      <span class="info-value" id="info-pred-len">10</span>
+      <span class="dot">·</span>
+      <span class="info-label">SYMBOLES</span>
+      <span class="info-value" id="info-symbols">0</span>
+    </div>
+    <div class="bottom-disclaimer">⚠ TRADING SIMULÉ — RÉSULTATS NON RÉELS</div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

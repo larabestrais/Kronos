@@ -74,3 +74,10 @@ venv.bak/
 temp/
 tmp/
 .python-version
+
+# Kronos Trading Bot — local runtime state
+portfolio_state.json
+.claude/
+backtest_results/
+.env
+venv/
